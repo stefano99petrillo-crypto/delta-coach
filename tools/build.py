@@ -38,11 +38,12 @@ head_extra = (
     '<meta name="description" content="Delta Coach: allenamento, alimentazione, abitudini e progressi con il tuo personal trainer.">\n'
     '<meta name="apple-mobile-web-app-capable" content="yes">\n'
     '<meta name="mobile-web-app-capable" content="yes">\n'
-    '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n'
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n'
     '<meta name="apple-mobile-web-app-title" content="Delta Coach">\n'
     '<link rel="manifest" href="manifest.webmanifest">\n'
     '<link rel="icon" href="icon-192.png" type="image/png">\n'
     '<link rel="apple-touch-icon" href="apple-touch-icon.png">\n'
+    '<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}</style>\n'
 )
 title_m = re.match(r'\s*<title>[^<]*</title>', head_body)
 title = title_m.group(0).strip() if title_m else '<title>Delta Coach</title>'
