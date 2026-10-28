@@ -56,17 +56,32 @@
     return '/rest/v1/shared_docs?coll=eq.' + enc(P.coll) + '&select=' + (sel || 'id,data');
   }
   async function getDoc(P) { var r = await authed(rowsPath(P, 'data')); return r && r[0] ? r[0].data : null; }
+  var seen = {};
   async function putDoc(P, data) {
+    if (P.k === 'udoc' && data && data._t) seen[P.id] = data._t;
     var row = P.k === 'udoc' ? { user_id: P.uid, id: P.id, data: data } : { coll: P.coll, id: P.id, data: data };
     await authed('/rest/v1/' + (P.k === 'udoc' ? 'user_docs' : 'shared_docs'), { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: row });
   }
-  async function listColl(P, where) {
+  async function pages(q) {
     var out = [], from = 0, step = 500;
     for (;;) {
-      var q = rowsPath(P) + (where ? '&data=cs.' + enc(JSON.stringify(where)) : '') + '&order=id';
       var r = await authed(q, { headers: { Range: from + '-' + (from + step - 1), 'Range-Unit': 'items' } }) || [];
       out = out.concat(r); if (r.length < step) break; from += step;
     }
+    return out;
+  }
+  /* foto dei pasti: all'avvio scarico solo quelle degli ultimi giorni, le altre quando apri quel giorno (sono immagini, pesano) */
+  var FOTO_GG = 3;
+  window.dcFotoCut = new Date(Date.now() - FOTO_GG * 864e5).toISOString().slice(0, 10);
+  window.dcFotoDay = function (ds) { return pages('/rest/v1/user_docs?user_id=eq.' + enc(uid()) + '&select=id,data&id=like.' + enc('foto-' + ds + '*') + '&order=id'); };
+  async function listColl(P, where) {
+    var out;
+    if (P.k === 'ucoll' && !where) {
+      var base = rowsPath(P);
+      var res = await Promise.all([pages(base + '&id=not.like.' + enc('foto-*') + '&order=id'), pages(base + '&or=' + enc('(id.gte.foto-' + window.dcFotoCut + ',id.like.foto-____-__)') + '&id=like.' + enc('foto-*') + '&order=id'),
+        pages('/rest/v1/user_docs?user_id=eq.' + enc(P.uid) + '&select=id&id=like.' + enc('foto-*') + '&order=id')]);
+      out = res[0].concat(res[1]); out.forEach(function (x) { if (x.data && x.data._t) seen[x.id] = x.data._t; }); window.dcFotoIds = res[2].map(function (x) { return x.id; });
+    } else out = await pages(rowsPath(P) + (where ? '&data=cs.' + enc(JSON.stringify(where)) : '') + '&order=id');
     return { docs: out.map(function (x) { return snap(x.id, x.data); }), empty: !out.length, size: out.length };
   }
   var db = {
@@ -88,6 +103,17 @@
   };
 
   /* ---------------- AI ---------------- */
+  /* foto del telefono (anche 10 MB): le riduco a max 1600 px in JPEG prima di mandarle all'AI, che accetta fino a 5 MB */
+  async function shrink(b) {
+    try {
+      if (!/^image\/(jpeg|png|webp|heic|heif)/i.test(b.type || '') && !(b instanceof Blob)) return b;
+      var bmp = await createImageBitmap(b); var sc = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      if (sc === 1 && b.size < 1.5e6 && /jpeg|png|webp|gif/i.test(b.type || '')) return b;
+      var cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * sc); cv.height = Math.round(bmp.height * sc);
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+      var out = await new Promise(function (res) { cv.toBlob(res, 'image/jpeg', 0.85); }); return out || b;
+    } catch (e) { return b; }
+  }
   function blobB64(b) { return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { var s = String(fr.result); res({ type: (b.type || 'image/jpeg'), data: s.slice(s.indexOf(',') + 1) }); }; fr.onerror = rej; fr.readAsDataURL(b); }); }
   function jsonFrom(t) {
     t = String(t || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
@@ -98,7 +124,7 @@
   }
   async function ai(prompt, opts, wantJson) {
     opts = opts || {}; var imgs = [];
-    if (opts.images && opts.images.length) imgs = await Promise.all([].slice.call(opts.images, 0, 4).map(blobB64));
+    if (opts.images && opts.images.length) imgs = await Promise.all([].slice.call(opts.images, 0, 4).map(function (x) { return shrink(x).then(blobB64); }));
     var r;
     try { r = await authed('/functions/v1/ai', { method: 'POST', body: { prompt: String(prompt), images: imgs, tier: opts.modelTier || 'default', json: !!wantJson }, signal: opts.signal }); }
     catch (e) { var c = e.body && e.body.error; if (c) throw err(c, e.body.message || c, e.status); if (e.code === 'resource_exhausted') throw err('rate_limited'); throw e; }
@@ -109,7 +135,7 @@
   var sample = {
     json: function (p, o) { return ai(p, o, true); },
     text: function (p, o) { return ai(p, o, false); },
-    limits: async function () { return { images: { maxCount: 4, maxBytes: 5 * 1024 * 1024 } }; }
+    limits: async function () { return { images: { maxCount: 4, maxBytes: 5 * 1024 * 1024, mediaTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] } }; }
   };
 
   /* ---------------- file da scaricare ---------------- */
@@ -200,6 +226,19 @@
     // stato staff (in attesa / attivo / disattivato): se la rete non risponde resta indefinito e l'app non blocca nessuno
     window.dcRpc('dc_me').then(function (m) { window.dcMember = m; }, function () {}).then(loadApp);
   }
+  /* stesso account su più dispositivi: se torni sull'app e nel frattempo hai salvato qualcosa dall'altro, ricarico i dati
+     (mai durante un allenamento in corso o con un pannello aperto, per non perdere quello che stai scrivendo) */
+  var lastCheck = Date.now();
+  document.addEventListener('visibilitychange', async function () {
+    if (document.visibilityState !== 'visible' || !started || Date.now() - lastCheck < 30000) return; lastCheck = Date.now();
+    var id = uid(); if (!id) return;
+    try {
+      if (localStorage.getItem('dc_live_' + id) || document.querySelector('.sheet')) return;
+      var rows = await authed('/rest/v1/user_docs?user_id=eq.' + enc(id) + '&select=id,t:data->_t&id=not.like.' + enc('foto-*'));
+      var newer = (rows || []).some(function (r) { return r.id !== '_probe' && +r.t > (+seen[r.id] || 0) + 1000; });
+      if (newer && !document.querySelector('.sheet') && !localStorage.getItem('dc_live_' + id)) location.reload();
+    } catch (e) {}
+  });
   function loadApp() {
     var s = document.createElement('script'); s.src = APP_SRC; s.onerror = function () { root.innerHTML = '<div class="boot">Non riesco a caricare l\'app: controlla la connessione e ricarica.</div>'; }; document.body.appendChild(s);
   }

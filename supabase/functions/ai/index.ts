@@ -26,10 +26,10 @@ Deno.serve(async (req: Request) => {
     const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, chiaveServizio(), { auth: { persistSession: false } });
     const { data: u, error: ue } = await admin.auth.getUser(jwt);
-    if (ue || !u?.user) return risposta({ error: 'not_granted', message: 'Accesso scaduto: rientra nell\'app.' }, 401);
+    if (ue || !u?.user) return risposta({ error: 'unauthenticated', message: 'Accesso scaduto: rientra nell\'app.' }, 401);
 
     const { data: n, error: be } = await admin.rpc('ai_bump', { uid: u.user.id, lim: LIMITE });
-    if (!be && typeof n === 'number' && n > LIMITE) return risposta({ error: 'rate_limited', message: 'Hai usato tutte le richieste AI di oggi.' }, 429);
+    if (!be && typeof n === 'number' && n > LIMITE) return risposta({ error: 'daily_limit', message: 'Hai usato tutte le richieste AI di oggi.' }, 429);
 
     const body = await req.json().catch(() => ({}));
     const prompt = String(body.prompt || '').slice(0, 120000);
@@ -51,9 +51,10 @@ Deno.serve(async (req: Request) => {
     const out = await r.json().catch(() => ({}));
     if (!r.ok) {
       const msg = String(out?.error?.message || '');
-      const code = r.status === 429 || r.status === 529 ? 'rate_limited' : /image/i.test(msg) ? 'image_rejected' : r.status === 401 ? 'sampling_disabled' : 'ai_error';
+      const code = r.status === 429 || r.status === 529 ? 'rate_limited' : /too long|too many tokens|maximum context/i.test(msg) ? 'prompt_too_large' : /image/i.test(msg) ? 'image_rejected' : r.status === 401 || r.status === 403 ? 'sampling_disabled' : 'ai_error';
       return risposta({ error: code, message: msg }, r.status === 429 ? 429 : 502);
     }
+    if (out.stop_reason === 'refusal') return risposta({ error: 'refused', message: 'Richiesta non elaborata' }, 422);
     const text = (out.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('');
     return risposta({ text });
   } catch (e) {

@@ -65,11 +65,11 @@ const Store = {
       try {
         const snap = await this.db.collection('data/users/' + this.uid).get();
         const out = {}; snap.docs.forEach(d => { if (d.id !== '_probe') out[d.id] = clone(d.data()); });
-        this.ck = new Set(Object.keys(out)); const ct = {}; Object.keys(out).forEach(k => { ct[k] = +(out[k] && out[k]._t) || 0; });
+        this.ck = new Set(Object.keys(out)); if (window.dcFotoIds) window.dcFotoIds.forEach(x => this.ck.add(x)); const ct = this.ct = {}; Object.keys(out).forEach(k => { ct[k] = +(out[k] && out[k]._t) || 0; });
         const up = [];
         Object.keys(local).forEach(k => { const c = out[k], l = local[k]; if (!l) return; if (!c || (+l._t || 0) > (+c._t || 0)) { out[k] = l; up.push(k); } });
         up.forEach(k => { this.savePrivate(k, out[k]); });
-        const cut6 = monthKey(Date.now() - 183 * DAY); let pr = false;
+        const cut6 = monthKey(Date.now() - 45 * DAY); let pr = false;
         Object.keys(local).forEach(k => { const m = /^(sess|cibo|ob)-(\d{4}-\d{2})$/.exec(k); if (m && m[2] < cut6 && ct[k] && ct[k] >= (+(local[k] && local[k]._t) || 0)) { delete local[k]; pr = true; } });
         if (pr) LS.set(this.pkey(), local);
         return out;
@@ -83,7 +83,7 @@ const Store = {
     if (!this.cloud) return;
     for (const D of cloudDocs(id, data)) {
       let j = ''; try { j = JSON.stringify(D.data) || ''; } catch(e){}
-      if (j.length > 250000) { troppoGrande(D.id); continue; }
+      if (j.length > 4000000) { troppoGrande(D.id); continue; }
       try { await this.db.doc('data/users/' + this.uid + '/' + D.id).set(clone(D.data)); if (this.ck) this.ck.add(D.id); }
       catch(e) { console.warn(e);
         if (e && e.code === 'invalid_argument' && !this.ro) {
@@ -130,7 +130,7 @@ function aiInfo(){
   if (!Store.inClaude) return { k: 'fuori', t: 'Stai usando l\'app fuori da Claude', x: 'L\'AI funziona solo quando apri il link dentro Claude: dal sito claude.ai o dall\'app Claude, con il tuo account.' };
   if (c === 'not_granted') return { k: 'negato', t: 'Il permesso per l\'AI è stato negato', x: 'Quando l\'app ha chiesto di usare Claude, la richiesta è stata rifiutata o chiusa. Tocca «Riattiva l\'AI» e accendi Claude nelle autorizzazioni dell\'app.', a: 'aiattiva', al: 'Riattiva l\'AI' };
   if (c === 'sampling_disabled') return { k: 'account', t: 'L\'AI non è ancora attiva sul server', x: 'Manca la chiave AI del progetto. Nel frattempo puoi inserire i dati a mano.' };
-  if (c) return { k: 'altro', t: 'L\'AI non è disponibile in questa visualizzazione', x: 'Chiudi e riapri l\'app dal link. Se non cambia, aprila dal sito claude.ai o dall\'app Claude aggiornata.' };
+  if (c) return { k: 'altro', t: 'L\'AI non è disponibile in questa visualizzazione', x: 'Chiudi e riapri l\'app. Se non cambia, riprova tra qualche minuto: nel frattempo puoi inserire i dati a mano.' };
   if (!Store.sampleChecked) return { k: 'attesa', t: 'Sto collegando l\'AI…', x: 'Ci vuole qualche secondo dopo l\'apertura.' };
   if (!Store.db) return { k: 'accesso', t: 'Per l\'AI serve l\'accesso a Claude', x: 'L\'AI dell\'app usa il tuo account Claude. Accedi su claude.ai (va bene anche l\'account gratuito) e riapri il link: la prima volta ti chiede il permesso di usare Claude, tocca Consenti.' };
   return { k: 'vista', t: 'Claude non attiva l\'AI per questo account', x: 'Hai fatto l\'accesso, ma Claude non mette a disposizione l\'AI a questa app aperta con il tuo account. Succede quando l\'app è condivisa con un link da un altro account: chiedi a chi ti ha mandato l\'app di invitarti con la tua email dal pulsante Condividi, poi riaprila dal link dell\'invito. Intanto puoi inserire i pasti a mano.' };
@@ -144,6 +144,7 @@ function aiOffBox(cosa){
 function aiErr(e){
   const c = e && e.code;
   if (c === 'not_granted' || c === 'sampling_disabled' || c === 'not_declared' || c === 'capability_disabled' || c === 'capability_removed') { Store.aiOff = true; Store.aiCode = c; setTimeout(() => { if (S) render(); }, 50); return c === 'not_granted' ? 'Il permesso per usare Claude è stato negato: tocca «Riattiva l\'AI» qui sotto, oppure inserisci i dati a mano.' : (aiInfo() || {}).t + '. Puoi inserire i dati a mano.'; }
+  if (c === 'daily_limit') return 'Hai usato tutte le richieste AI di oggi: domani si riparte. Intanto puoi inserire i dati a mano.';
   if (c === 'rate_limited') return 'Troppe richieste in poco tempo. Riprova tra qualche minuto.';
   if (c === 'image_rejected') return 'Immagine non leggibile: prova con un\'altra foto.';
   if (c === 'images_unavailable') return 'L\'invio di foto all\'AI non è attivo in questa visualizzazione: chiudi e riapri l\'app e, se te lo chiede, consenti l\'invio di immagini.';
@@ -445,7 +446,7 @@ function cleanFood(raw, pasto){
 }
 
 /* ---------- dati personali ed energia ---------- */
-const APP_URL = 'https://delta-coach.vercel.app';
+const APP_URL = /^https:/.test(location.origin) ? location.origin : 'https://delta-coach.vercel.app';
 const OBIETTIVI_DATI = [['dimagrire','Perdere grasso'],['ricomposizione','Ricomposizione (meno grasso, più muscolo)'],['mantenere','Mantenere il peso'],['massa','Aumentare la massa muscolare'],['performance','Forza e prestazione'],['salute','Salute e benessere']];
 const LAVORO = [['sedentario','Seduto quasi tutto il giorno'],['in_piedi','In piedi o in movimento'],['fisico','Lavoro fisico pesante']];
 const ESPERIENZA = [['principiante','Principiante'],['intermedio','Intermedio'],['avanzato','Avanzato']];
@@ -2236,7 +2237,7 @@ SCREENS.profilo = function(){
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
   if (window.dcLogout) h += '<button type="button" class="btn wide ghost" data-a="dclogout">Esci dall\'account' + (window.dcEmail ? ' · ' + esc(window.dcEmail) : '') + '</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione 34 · web</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione 35 · web</p>';
   return h + '</div>';
 };
 
@@ -2246,8 +2247,15 @@ function setPath(o, path, v){ const p = path.split('.'); let x = o; for (let i =
 /* foto dei pasti: miniature in un archivio separato, così non riempiono la memoria dei dati */
 function fotoKey(mk){ return Store.pkey() + '_foto_' + mk; }
 let FOTO_LS = {}, FOTO_DEL = {};
-function fotoMonth(mk){ if (!FOTO[mk]) FOTO[mk] = { giorni: {} }; FOTO[mk].giorni = FOTO[mk].giorni || {}; if (!FOTO_LS[mk]) { FOTO_LS[mk] = 1; const l = LS.get(fotoKey(mk)); if (l && l.giorni) Object.keys(l.giorni).forEach(ds => Object.keys(l.giorni[ds] || {}).forEach(p => { const G = FOTO[mk].giorni[ds] = FOTO[mk].giorni[ds] || {}; if (!G[p] && !FOTO_DEL[ds + '-' + p] && Array.isArray(l.giorni[ds][p]) && l.giorni[ds][p].length) G[p] = l.giorni[ds][p]; })); } return FOTO[mk]; }
-function fotoFor(ds, pasto){ const g = fotoMonth(ds.slice(0, 7)).giorni[ds] || {}; return g[pasto] || []; }
+let FOTO_REM = {};
+function fotoMerge(k, v){ const r = k.slice(5); if (!v) return;
+  if (/^\d{4}-\d{2}$/.test(r)) { const M = FOTO[r] = FOTO[r] || { giorni: {} }; Object.keys(v.giorni || {}).forEach(ds => { M.giorni[ds] = Object.assign({}, v.giorni[ds], M.giorni[ds] || {}); }); return; }
+  const ds = r.slice(0, 10), p = r.slice(11); if (!p || !Array.isArray(v.list) || FOTO_DEL[ds + '-' + p]) return; const M = FOTO[ds.slice(0, 7)] = FOTO[ds.slice(0, 7)] || { giorni: {} }; M.giorni[ds] = M.giorni[ds] || {}; if (v.list.length && !M.giorni[ds][p]) M.giorni[ds][p] = v.list; }
+function fotoMonth(mk){ if (!FOTO[mk]) FOTO[mk] = { giorni: {} }; FOTO[mk].giorni = FOTO[mk].giorni || {};
+ if (!FOTO_LS[mk]) { FOTO_LS[mk] = 1; const l = LS.get(fotoKey(mk)); if (l && l.giorni) Object.keys(l.giorni).forEach(ds => Object.keys(l.giorni[ds] || {}).forEach(p => { const G = FOTO[mk].giorni[ds] = FOTO[mk].giorni[ds] || {}; if (!G[p] && !FOTO_DEL[ds + '-' + p] && Array.isArray(l.giorni[ds][p]) && l.giorni[ds][p].length) G[p] = l.giorni[ds][p]; })); } return FOTO[mk]; }
+function fotoFor(ds, pasto){ fotoRemote(ds); const g = fotoMonth(ds.slice(0, 7)).giorni[ds] || {}; return g[pasto] || []; }
+/* sul web le foto dei giorni passati arrivano dal cloud solo quando apri quel giorno */
+function fotoRemote(ds){ if (!window.dcFotoDay || !window.dcFotoCut || ds >= window.dcFotoCut || FOTO_REM[ds]) return; FOTO_REM[ds] = 1; window.dcFotoDay(ds).then(rows => { (rows || []).forEach(x => fotoMerge(x.id, x.data)); if ((rows || []).length) render(); }).catch(() => { FOTO_REM[ds] = 0; }); }
 function setFoto(ds, pasto, list){ const mk = ds.slice(0, 7); const M = fotoMonth(mk); M.giorni[ds] = M.giorni[ds] || {}; M.giorni[ds][pasto] = list; if (!list.length) delete M.giorni[ds][pasto];
   if (!LS.set(fotoKey(mk), M)) { UI.lsPieno = true; if (!Store.cloud) toast('Memoria del telefono piena: la foto non resta salvata. Archivia i mesi vecchi dalla Home'); }
   if (Store.cloud) { const id = 'foto-' + ds + '-' + pasto; if (!list.length) FOTO_DEL[ds + '-' + pasto] = 1; Store.db.doc('data/users/' + Store.uid + '/' + id).set({ list: clone(list), _t: Date.now() }).then(() => { if (Store.ck) Store.ck.add(id); }).catch(e => { console.warn(e); toast('La foto resta solo su questo telefono: il tuo account non l\'ha accettata'); }); } }
@@ -2508,10 +2516,10 @@ function lsMB(n){ return fmtN(n * 2 / 1e6, 1); }
 function lsPct(){ return Math.round(lsUso() * 2 / 5e6 * 100); }
 function fotoInCloud(M){ if (!Store.ck) return false; return Object.keys(M.giorni || {}).every(ds => Object.keys(M.giorni[ds] || {}).every(p => !(M.giorni[ds][p] || []).length || Store.ck.has('foto-' + ds + '-' + p))); }
 function liberaSpazio(){
-  if (!Store.cloud) return 0; let n = 0; const cut = monthKey(Date.now() - 62 * DAY); const pre = Store.pkey() + '_foto_';
+  if (!Store.cloud) return 0; let n = 0; const cut = monthKey(Date.now() - 35 * DAY); const pre = Store.pkey() + '_foto_';
   fotoLsKeys().forEach(k => { const mk = k.slice(pre.length); if (mk >= cut) return; const M = LS.get(k); if (M && !fotoInCloud(M)) return; LS.del(k); n++; });
-  const all = LS.get(Store.pkey()) || {}; const cut6 = monthKey(Date.now() - 183 * DAY); let ch = false;
-  Object.keys(all).forEach(k => { const m = /^(sess|cibo|ob)-(\d{4}-\d{2})$/.exec(k); if (m && m[2] < cut6 && Store.ck && Store.ck.has(k)) { delete all[k]; ch = true; n++; } });
+  const all = LS.get(Store.pkey()) || {}; const cut6 = monthKey(Date.now() - 45 * DAY); let ch = false;
+  Object.keys(all).forEach(k => { const m = /^(sess|cibo|ob)-(\d{4}-\d{2})$/.exec(k); if (m && m[2] < cut6 && Store.ck && Store.ck.has(k) && Store.ct && (Store.ct[k] || 0) >= (+(all[k] && all[k]._t) || 0)) { delete all[k]; ch = true; n++; } });
   if (ch) LS.set(Store.pkey(), all); LSUSO = null; return n;
 }
 function lsPieno(all){
@@ -2520,7 +2528,7 @@ function lsPieno(all){
   if (!lsPieno.t || now - lsPieno.t > 300000) { lsPieno.t = now; setTimeout(() => toast(Store.cloud ? 'Memoria del telefono piena: i dati sono nel tuo account, ma conviene liberare spazio' : 'Memoria del telefono piena: gli ultimi dati NON sono salvati. Salva una copia e archivia i mesi vecchi dalla Home'), 1500); }
 }
 async function migraFoto(){
-  if (!Store.cloud || !Store.ck) return; const pre = Store.pkey() + '_foto_'; const cut = monthKey(Date.now() - 62 * DAY);
+  if (!Store.cloud || !Store.ck) return; const pre = Store.pkey() + '_foto_'; const cut = monthKey(Date.now() - 35 * DAY);
   for (const k of fotoLsKeys()) { const mk = k.slice(pre.length); const M = LS.get(k); if (!M || !M.giorni) continue; let ok = true;
     for (const ds of Object.keys(M.giorni)) for (const p of Object.keys(M.giorni[ds] || {})) { const id = 'foto-' + ds + '-' + p; const list = M.giorni[ds][p]; if (Store.ck.has(id) || !Array.isArray(list) || !list.length) continue;
       try { await Store.db.doc('data/users/' + Store.uid + '/' + id).set({ list: clone(list), _t: Date.now() }); Store.ck.add(id); } catch(e) { ok = false; } }
@@ -2528,7 +2536,7 @@ async function migraFoto(){
   LSUSO = null;
 }
 function archiviaInfo(){
-  const pre = Store.pkey() + '_foto_'; const cutF = monthKey(Date.now() - 62 * DAY), cut6 = monthKey(Date.now() - 183 * DAY);
+  const pre = Store.pkey() + '_foto_'; const cutF = monthKey(Date.now() - 35 * DAY), cut6 = monthKey(Date.now() - 45 * DAY);
   const foto = fotoLsKeys().filter(k => k.slice(pre.length) < cutF); const all = LS.get(Store.pkey()) || {};
   const mesi = Object.keys(all).filter(k => { const m = /^(cibo|ob)-(\d{4}-\d{2})$/.exec(k) || (Store.cloud ? /^(sess)-(\d{4}-\d{2})$/.exec(k) : null); return m && m[2] < cut6; });
   let n = 0; foto.forEach(k => { try { n += (localStorage.getItem(k) || '').length; } catch(e){} }); mesi.forEach(k => { n += JSON.stringify(all[k]).length; });
@@ -3864,6 +3872,7 @@ function avLivelliCard(game){
   return '<button type="button" class="card" style="flex-direction:row;align-items:center;gap:14px" data-a="pgo" data-from="livelli"><span style="width:64px;flex:0 0 64px">' + avatarSVG(avCfg(), AV, { id: 'lvn', plinth: false, crop: 'figura' }) + '</span><span class="stack" style="flex:1;gap:2px"><span style="font-weight:800">Il tuo personaggio</span><span class="small muted" style="line-height:1.4">Cresce con i tuoi dati veri: equipaggiamento e trofei si sbloccano salendo di livello.</span></span>' + ic('chev', 18) + '</button>';
 }
 SCREENS.personaggio = function(){
+  if (!AV_ON) return SCREENS.livelli();
   const AV = avState(); const cfg = avCfg(); const lv = AV.T.lv; const SI = streakInfo(); const SP = settimanaPerfetta(); const TR = avTrofei(); const nw = S.avNew || null; const a = S.avatar || {};
   const nome = a.nome || (S.profilo.nome || '').split(' ')[0];
   const game = !!S.impostazioni.livelli;
@@ -3986,7 +3995,7 @@ function sheetRecap(d){
   const cur = monthKey(new Date()), prev = monthKey(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15));
   let h = '<span class="eyebrow">Da condividere</span><h2>' + (d.rec ? 'Il tuo record in un\'immagine' : 'Il tuo mese in un\'immagine') + '</h2><span class="small muted" style="line-height:1.45">Formato storia di Instagram: salvala e pubblicala, o mandala al tuo PT.</span>'
     + (d.rec ? '' : '<div class="seg">' + [[prev, MML[+prev.slice(5) - 1]], [cur, MML[+cur.slice(5) - 1]]].map(m => '<button type="button" data-a="recapmk" data-v="' + m[0] + '" aria-selected="' + (d.mk === m[0]) + '">' + m[1][0].toUpperCase() + m[1].slice(1) + '</button>').join('') + '</div>');
-  h += d.busy ? '<div class="busy">Preparo l\'immagine…</div>' : d.url ? '<img class="rc-img" src="' + d.url + '" alt="' + (d.rec ? 'Il tuo record: ' + esc(d.rec.nome) : 'Riepilogo di ' + esc(MML[+d.mk.slice(5) - 1])) + ' con il tuo personaggio">' : d.err ? '<div class="chip acc">' + esc(d.err) + '</div>' : '';
+  h += d.busy ? '<div class="busy">Preparo l\'immagine…</div>' : d.url ? '<img class="rc-img" src="' + d.url + '" alt="' + (d.rec ? 'Il tuo record: ' + esc(d.rec.nome) : 'Riepilogo di ' + esc(MML[+d.mk.slice(5) - 1])) + (AV_ON ? ' con il tuo personaggio' : '') + '">' : d.err ? '<div class="chip acc">' + esc(d.err) + '</div>' : '';
   h += '<div class="grid2"><button type="button" class="btn pri" data-a="recapsave"' + (d.url ? '' : ' disabled') + '>Salva l\'immagine</button><button type="button" class="btn" data-a="recapshare"' + (d.url ? '' : ' disabled') + '>Condividi</button></div><button type="button" class="btn ghost" data-a="closesheet">Chiudi</button>';
   return h;
 }
@@ -5249,7 +5258,7 @@ function renderSheet(){
     case 'mattino': return sheetMattino();
     case 'spesa': return sheetSpesa(d);
     case 'prevfix': return sheetPrevFix();
-    case 'avatar': return sheetAvatar(d);
+    case 'avatar': return AV_ON ? sheetAvatar(d) : close;
     case 'pausa': return sheetPausa();
     case 'recap': return sheetRecap(d);
     case 'calendario': return sheetCalendario(d);
@@ -5258,7 +5267,7 @@ function renderSheet(){
     case 'caltel': return sheetCalTel();
     case 'aiinfo': { const I = aiInfo(); if (!I) return '<h2>L\'AI è attiva</h2><span class="small">Funziona tutto: foto dei pasti, descrizioni, piano pasti e consigli.</span><button type="button" class="btn pri" data-a="closesheet">Ok</button>';
       return '<span class="eyebrow">AI</span><h2>' + esc(I.t) + '</h2><span class="small" style="line-height:1.55">' + esc(I.x) + '</span>' + (I.a ? '<button type="button" class="btn pri wide" data-a="' + I.a + '">' + esc(I.al) + '</button>' : '')
-        + '<div class="tip" style="line-height:1.5"><strong>Come funziona:</strong> l\'AI dell\'app usa l\'account Claude di chi la sta usando, quindi ognuno usa i propri messaggi. La prima volta l\'app chiede il permesso: tocca <strong>Consenti</strong>, anche per le foto. Senza AI l\'app funziona lo stesso: i pasti si inseriscono a mano.</div>'
+        + '<div class="tip" style="line-height:1.5"><strong>Come funziona:</strong> l\'AI è inclusa nell\'app: ognuno ha fino a 150 richieste al giorno (foto dei pasti, descrizioni, schede, piani). Senza AI l\'app funziona lo stesso: i dati si inseriscono a mano.</div>'
         + '<div class="grid2"><button type="button" class="btn" data-a="airetry">Riprova</button><button type="button" class="btn" data-a="closesheet">Chiudi</button></div><span class="tiny muted mono" style="line-height:1.5;word-break:break-word">' + esc(aiDiagTxt()) + '</span>'; }
     case 'riprendi': return sheetRiprendi();
     case 'codice': return sheetCodice(d);
@@ -5288,7 +5297,7 @@ function renderSheet(){
       return '<h2>Aggiorna il peso</h2><form data-form="peso" class="stack" style="gap:12px" novalidate><div class="grid2"><div class="field"><label for="pw-d">Data</label><input id="pw-d" type="date" name="data" class="input" value="' + isoDate(new Date()) + '" max="' + isoDate(new Date()) + '"></div><div class="field"><label for="pw-k">Peso (kg)</label><input id="pw-k" name="peso" class="input mono" inputmode="decimal" value="' + (pe ? numIn(pe.peso) : '') + '"></div></div><span class="tiny muted">Meglio sempre alla stessa ora, al mattino. Il fabbisogno si aggiorna da solo.</span><div class="grid2">' + close + '<button class="btn pri" type="submit">Salva</button></div></form>'; }
     case 'invita': { const txt = inviteText(d.nome || ''); const code = inviteCode();
       return '<h2>Fai provare l\'app</h2>'
-        + '<div class="card soft"><span class="eyebrow">1 · Dai l\'accesso</span><span class="small" style="line-height:1.5">Per ora l\'app è privata. Su claude.ai apri il menu <strong>Condividi</strong> di questa pagina e scegli chi può aprirla. Chi entra con il proprio account Claude ha i dati salvati nel suo account, separati dai tuoi.</span></div>'
+        + '<div class="card soft"><span class="eyebrow">1 · Come entra</span><span class="small" style="line-height:1.5">Apre il link, crea un account con email e password e inserisce il codice. I suoi dati restano nel suo account, separati dai tuoi.</span></div>'
         + '<div class="card soft"><span class="eyebrow">2 · Manda il messaggio</span><textarea id="invtxt" class="input" style="min-height:170px;font-size:14px" readonly>' + esc(txt) + '</textarea><div class="grid2"><button type="button" class="btn dark" data-a="copyinv">Copia</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">WhatsApp</a></div>' + (navigator.share ? '<button type="button" class="btn sm" data-a="shareinv">Altre app…</button>' : '') + '</div>'
         + (S.profilo.ruolo === 'pt' ? '<span class="tiny muted" style="line-height:1.45">Con il tuo codice ' + esc(code) + ' gli amici compaiono tra i tuoi clienti come clienti veri: vedi livello, ultimo allenamento, lezioni rimaste e possono prenotarti.</span>' : '')
         + '<button type="button" class="btn" data-a="closesheet">Chiudi</button>'; }
@@ -5520,7 +5529,7 @@ const A = {
     else if (w === 'delcli') ask('Eliminare il cliente?', 'Anamnesi, lezioni, misure e note di questo cliente verranno cancellate per sempre.', 'Elimina', async () => { delete CLI[ds.id]; await Store.delPrivate('cl-' + ds.id); UI.route = 'clienti'; await loadFor('clienti'); });
     else if (w === 'delinteg') ask('Eliminare l\'integratore?', 'Sparisce dalla lista dei salvati. Le dosi già segnate nei giorni passati restano nel conteggio.', 'Elimina', () => { S.nutri.integratori = S.nutri.integratori.filter(i => i.id !== ds.id); save(); });
     else if (w === 'delpiano') ask('Rimuovere il piano?', 'Gli obiettivi giornalieri restano finché non li cambi.', 'Rimuovi', () => { S.nutri.piano = null; save(); });
-    else if (w === 'unlink') ask('Cambiare o scollegare il PT?', 'Ti scolleghi da ' + S.profilo.ptNome + ': puoi inserire un nuovo codice oppure continuare da solo. I tuoi dati restano.', 'Scollegati', () => { S.profilo.onboarded = false; S.profilo.ptId = ''; S.profilo.ptCode = ''; S.profilo.offline = false; UI.login.mode = 'cliente'; UI.login.pt = 'no'; save(); });
+    else if (w === 'unlink') ask('Cambiare o scollegare il PT?', 'Ti scolleghi da ' + S.profilo.ptNome + ': non vedrà più i tuoi dati. Puoi inserire un nuovo codice oppure continuare da solo. I tuoi dati restano.', 'Scollegati', () => { if (Store.db && S.profilo.ptId) Store.db.doc('condivisi/' + Store.uid).delete().catch(() => {}); S.profilo.onboarded = false; S.profilo.ptId = ''; S.profilo.ptCode = ''; S.profilo.offline = false; UI.login.mode = 'cliente'; UI.login.pt = 'no'; save(); });
     else if (w === 'linkpt') ask('Collegare un PT?', 'Ti serve il codice che ti ha dato il tuo personal trainer. I tuoi dati restano tutti.', 'Continua', () => { S.profilo.onboarded = false; UI.login.mode = 'cliente'; UI.login.pt = 'si'; save(); });
     else if (w === 'dellezioni') ask('Rimuovere il pacchetto?', 'Sparisce il conteggio delle lezioni. I tuoi allenamenti restano.', 'Rimuovi', () => { S.lezioni = null; UI.sheet = null; save(); });
     else if (w === 'logout') ask('Uscire?', 'Torni alla schermata di accesso. I tuoi dati restano salvati.', 'Esci', () => { S.profilo.onboarded = false; S.profilo.ruolo = null; UI.login.mode = 'cliente'; save(); });
@@ -6013,7 +6022,7 @@ const FORMS = {
     const E = energia(); let auto = false;
     if (E && (!S.nutri.target || /stima|calcolat/.test(S.nutri.fonte || ''))) { S.nutri.target = calcTarget(E); if (!/calcolat/.test(S.nutri.fonte || '')) S.nutri.fonte = 'calcolati dai tuoi dati'; auto = true; }
     const primo = sheetD().primo && S.profilo.ruolo === 'cliente' && !S.guida; if (primo) S.guidaVista = 1;
-    save(); UI.sheet = primo ? { k: 'avatar', d: { primo: 1 } } : E ? { k: 'energia', d: {} } : null; toast(E ? (auto ? 'Fabbisogno calcolato e impostato' : 'Fabbisogno calcolato') : 'Dati salvati: ne mancano alcuni per il calcolo'); render();
+    save(); UI.sheet = primo ? (AV_ON ? { k: 'avatar', d: { primo: 1 } } : { k: 'obgen', d: { primo: 1 } }) : E ? { k: 'energia', d: {} } : null; toast(E ? (auto ? 'Fabbisogno calcolato e impostato' : 'Fabbisogno calcolato') : 'Dati salvati: ne mancano alcuni per il calcolo'); render();
   },
   peso(fd){ const p = num(fd.get('peso')); const ds = fd.get('data') || isoDate(new Date()); if (!(p >= 30 && p <= 300)) { toast('Controlla il peso'); return; } S.pesi = (S.pesi || []).filter(x => x.data !== ds).concat([{ id: rid(), data: ds, peso: p }]);
     const E = energia(); if (E && /calcolat|stima/.test(S.nutri.fonte || '')) S.nutri.target = calcTarget(E);
@@ -6129,6 +6138,10 @@ document.addEventListener('change', ev => {
 });
 document.addEventListener('toggle', ev => { const el = ev.target; if (el && el.dataset && el.dataset.details === 'micro') UI.microOpen = el.open; }, true);
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && UI.sheet) A.closesheet(); });
+/* quando torni sull'app dopo un po': prenotazioni, clienti e richieste aggiornati */
+let LAST_LOAD = Date.now();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible' || !S || !S.profilo.onboarded || UI.sheet || LIVE || Date.now() - LAST_LOAD < 60000) return; LAST_LOAD = Date.now(); loadFor(UI.route).then(() => { if (!UI.sheet) render(); }).catch(() => {}); });
+/* sul web, dopo qualche secondo libero spazio sul telefono: i mesi vecchi sono già nel tuo account */
 
 /* ---------- avvio ---------- */
 async function boot(){
@@ -6150,7 +6163,7 @@ async function boot(){
   SESS = {}; FOOD = {}; OBLOG = {}; CLI = {}; FOTO = {}; FOTO_LS = {}; FOTO_DEL = {}; const fk = [], ck = [];
   Object.keys(priv).forEach(k => { if (k.indexOf('foto-') === 0) { fk.push(k); return; } if (k.indexOf('cibo-') === 0) { ck.push(k); return; } if (k.indexOf('sess-') === 0) SESS[k.slice(5)] = priv[k]; else if (k.indexOf('cibo-') === 0) FOOD[k.slice(5)] = priv[k]; else if (k.indexOf('ob-') === 0) OBLOG[k.slice(3)] = priv[k]; else if (k.indexOf('cl-') === 0 && priv[k] && priv[k].id) CLI[priv[k].id] = priv[k]; });
   bootMerge(priv, fk, ck);
-  if (Store.cloud) setTimeout(() => { migraFoto().catch(() => {}); }, 4000);
+  if (Store.cloud) setTimeout(() => { migraFoto().catch(() => {}).then(() => { try { liberaSpazio(); } catch(e){} }); }, 4000);
   LIVE = LS.get(liveKey()); if (LIVE && (!Array.isArray(LIVE.ex) || !LIVE.ex.length)) LIVE = null;
   if (LIVE && LIVE.cid) { if (CLI[LIVE.cid]) enterClient(LIVE.cid); else LIVE.cid = null; }
   save();
