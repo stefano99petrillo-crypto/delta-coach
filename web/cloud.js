@@ -107,11 +107,11 @@
   async function shrink(b) {
     try {
       if (!/^image\/(jpeg|png|webp|heic|heif)/i.test(b.type || '') && !(b instanceof Blob)) return b;
-      var bmp = await createImageBitmap(b); var sc = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-      if (sc === 1 && b.size < 1.5e6 && /jpeg|png|webp|gif/i.test(b.type || '')) return b;
+      var bmp = await createImageBitmap(b); var sc = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+      if (sc === 1 && b.size < 0.8e6 && /jpeg|png|webp|gif/i.test(b.type || '')) return b;
       var cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * sc); cv.height = Math.round(bmp.height * sc);
       cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
-      var out = await new Promise(function (res) { cv.toBlob(res, 'image/jpeg', 0.85); }); return out || b;
+      var out = await new Promise(function (res) { cv.toBlob(res, 'image/jpeg', 0.8); }); return out || b;
     } catch (e) { return b; }
   }
   function blobB64(b) { return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { var s = String(fr.result); res({ type: (b.type || 'image/jpeg'), data: s.slice(s.indexOf(',') + 1) }); }; fr.onerror = rej; fr.readAsDataURL(b); }); }
@@ -132,11 +132,11 @@
     if (typeof opts.onText === 'function') { try { opts.onText({ text: text }); } catch (e) {} }
     return wantJson ? jsonFrom(text) : text;
   }
-  var sample = {
-    json: function (p, o) { return ai(p, o, true); },
-    text: function (p, o) { return ai(p, o, false); },
-    limits: async function () { return { images: { maxCount: 4, maxBytes: 5 * 1024 * 1024, mediaTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] } }; }
-  };
+  /* l'app chiama sia sample(prompt, opts) → {text} (consigli, analisi del sonno) sia sample.json(...) */
+  var sample = function (p, o) { return ai(p, o, false).then(function (t) { return { text: t }; }); };
+  sample.json = function (p, o) { return ai(p, o, true); };
+  sample.text = function (p, o) { return ai(p, o, false); };
+  sample.limits = async function () { return { images: { maxCount: 4, maxBytes: 5 * 1024 * 1024, mediaTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] } }; };
 
   /* ---------------- file da scaricare ---------------- */
   var downloads = {
