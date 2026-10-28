@@ -1360,15 +1360,24 @@ async function go(route, params){
   try { await loadFor(route); } catch(e) { console.warn(e); }
   if (UI.route === route) render();
 }
+/* scheda staff mancante (es. dati ripresi su un nuovo account): la ricrea invece di restare in caricamento */
+async function ensureStaff(){
+  const role = S.profilo.ruolo; const nome = S.profilo.nome || 'PT'; const doc = { nome, ruolo: role, aggiornato: Date.now() };
+  if (role === 'pt') { const base = (nome.normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase() + 'XXXX').slice(0, 4);
+    for (let i = 0; i < 6; i++) { const c = base + '-' + String(Math.floor(1000 + Math.random() * 9000)); let ex2 = null; try { ex2 = await Store.get('codici_pt/' + c); } catch(e){} if (!ex2) { doc.codice = c; break; } }
+    if (doc.codice) { try { await Store.set('codici_pt/' + doc.codice, { pt: Store.uid, nome }); } catch(e){} } doc.disp = DEFAULT_DISP; }
+  try { await Store.set('staff/' + Store.uid, doc); } catch(e) { console.warn(e); }
+  return doc;
+}
 async function loadFor(r){
   const role = S.profilo.ruolo;
   if (role === 'cliente' && (r === 'home' || r === 'prenota')) { await loadBookings(); if (r === 'home') pushSummary(); }
   if (r === 'ptoggi') {
     const res = await Promise.all([Store.query('prenotazioni', 'pt', Store.uid), Store.query('condivisi', 'pt', Store.uid), Store.get('staff/' + Store.uid)]);
-    SH.ptPren = res[0]; SH.clienti = res[1]; SH.me = res[2];
+    SH.ptPren = res[0]; SH.clienti = res[1]; SH.me = res[2] || await ensureStaff();
   }
-  if (r === 'profilo' && role === 'pt') SH.me = await Store.get('staff/' + Store.uid);
-  if ((r === 'agenda' || r === 'clientept') && role === 'pt') { const res = await Promise.all([Store.query('condivisi', 'pt', Store.uid), SH.me ? Promise.resolve(SH.me) : Store.get('staff/' + Store.uid), Store.query('prenotazioni', 'pt', Store.uid), Store.query('approvazioni', 'autore', Store.uid), getCfg()]); SH.clienti = res[0]; SH.me = res[1]; SH.ptPren = res[2]; SH.mie = res[3]; SH.cfg = res[4]; }
+  if (r === 'profilo' && role === 'pt') SH.me = (await Store.get('staff/' + Store.uid)) || await ensureStaff();
+  if ((r === 'agenda' || r === 'clientept') && role === 'pt') { const res = await Promise.all([Store.query('condivisi', 'pt', Store.uid), SH.me ? Promise.resolve(SH.me) : Store.get('staff/' + Store.uid), Store.query('prenotazioni', 'pt', Store.uid), Store.query('approvazioni', 'autore', Store.uid), getCfg()]); SH.clienti = res[0]; SH.me = res[1] || await ensureStaff(); SH.ptPren = res[2]; SH.mie = res[3]; SH.cfg = res[4]; }
   if (r === 'lavoro' || r === 'vendite' || r === 'gtoggi') { SH.mie = await Store.query('approvazioni', 'autore', Store.uid); SH.cfg = await getCfg(); }
   if (role === 'manager') { const res = await Promise.all([Store.query('approvazioni'), Store.query('staff'), getCfg()]); SH.ap = res[0]; SH.staff = res[1]; SH.cfg = res[2]; }
 }
