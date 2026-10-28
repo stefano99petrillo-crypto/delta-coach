@@ -38,6 +38,8 @@
   }
   async function authed(path, opt) { opt = opt || {}; opt.headers = Object.assign({ Authorization: 'Bearer ' + (await token()) }, opt.headers || {}); return http(path, opt); }
   function uid() { return session && session.user && session.user.id; }
+  /* funzioni del server (accessi staff): gli errori arrivano con il messaggio della funzione, es. "codice_non_valido" */
+  window.dcRpc = function (fn, args) { return authed('/rest/v1/rpc/' + fn, { method: 'POST', body: args || {} }); };
   function enc(v) { return encodeURIComponent(String(v)); }
 
   /* ---------------- database: stessa forma del db degli artefatti ---------------- */
@@ -160,8 +162,10 @@
     if (e && e.code === 'unavailable') return 'Connessione assente: controlla internet e riprova.';
     return 'Qualcosa non ha funzionato: ' + m;
   }
-  root.addEventListener('click', function (ev) { var b = ev.target.closest('[data-m]'); if (!b) return; UI.mode = b.dataset.m; UI.err = ''; UI.msg = ''; var e = document.getElementById('dc-e'); if (e) UI.email = e.value; view(); });
+  // dopo l'accesso #app appartiene all'app: questi gestori valgono solo per la schermata di login
+  root.addEventListener('click', function (ev) { if (started) return; var b = ev.target.closest('[data-m]'); if (!b) return; UI.mode = b.dataset.m; UI.err = ''; UI.msg = ''; var e = document.getElementById('dc-e'); if (e) UI.email = e.value; view(); });
   root.addEventListener('submit', async function (ev) {
+    if (started) return;
     if (ev.target.id !== 'dcauth') return; ev.preventDefault(); if (UI.busy) return;
     var fd = new FormData(ev.target); var email = String(fd.get('email') || '').trim().toLowerCase(); var pw = String(fd.get('pw') || ''); UI.email = email || UI.email; UI.err = ''; UI.msg = '';
     if (UI.mode !== 'newpw' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { UI.err = 'Scrivi un\'email valida.'; return view(); }
@@ -193,6 +197,10 @@
   function start() {
     if (started) return; started = true; window.dcEmail = session && session.user && session.user.email;
     root.innerHTML = '<div class="boot">Caricamento…</div>';
+    // stato staff (in attesa / attivo / disattivato): se la rete non risponde resta indefinito e l'app non blocca nessuno
+    window.dcRpc('dc_me').then(function (m) { window.dcMember = m; }, function () {}).then(loadApp);
+  }
+  function loadApp() {
     var s = document.createElement('script'); s.src = APP_SRC; s.onerror = function () { root.innerHTML = '<div class="boot">Non riesco a caricare l\'app: controlla la connessione e ricarica.</div>'; }; document.body.appendChild(s);
   }
   (async function boot() {

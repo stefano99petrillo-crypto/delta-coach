@@ -1811,6 +1811,7 @@ async function ensureStaff(){
 }
 async function loadFor(r){
   const role = S.profilo.ruolo;
+  if (r === 'staffadmin' || (r === 'codici' && window.dcRpc) || (r === 'ptoggi' && isAdmin())) { if (r !== 'ptoggi') SH.adm = null; try { SH.adm = await window.dcRpc('dc_admin_overview'); } catch(e) { if (r !== 'ptoggi') SH.adm = { err: 1 }; } }
   if (role === 'cliente' && (r === 'home' || r === 'prenota')) { await loadBookings(); if (r === 'home') pushSummary(); }
   if (r === 'ptoggi') {
     const res = await Promise.all([Store.query('prenotazioni', 'pt', Store.uid), Store.query('condivisi', 'pt', Store.uid), Store.get('staff/' + Store.uid)]);
@@ -1833,6 +1834,7 @@ function render(){
   document.body.classList.toggle('gamebody', !!game);
   try {
     if (!logged) html = renderLogin();
+    else if (staffBlocked()) html = renderStaffWait();
     else if (r === 'sessione' && LIVE) html = renderSession();
     else { const fn = SCREENS[r] || SCREENS[ROOT_ROUTES[role]]; html = fn() + renderTabs(game); }
     if (CLX && logged && CL_ROUTES.indexOf(r) >= 0) html = html.replace(/<div class="screen[^"]*"[^>]*>/, m => m + clientBanner());
@@ -2666,13 +2668,14 @@ SCREENS.profilo = function(){
   if (role === 'cliente' && !ptLinked()) h += lezioniCard() || '<button type="button" class="btn sm" data-a="lezsi">Tieni il conto delle lezioni con un trainer</button>';
   if (role === 'cliente' && hasPT()) h += '<div class="card"><div class="row"><div class="stack"><span class="small muted">Il tuo PT</span><span style="font-weight:700">' + esc(p.ptNome) + '</span><span class="tiny muted mono">' + esc(p.ptCode) + '</span></div><button type="button" class="btn sm" data-a="confirm" data-what="unlink">Cambia o scollega</button></div>' + (ptLinked() ? '<div class="row"><span class="small">Pacchetto: ' + (p.pacchetto.totale || 0) + ' lezioni dal ' + esc(fmtD(parseDate(p.pacchetto.inizio))) + '</span><button type="button" class="link" data-a="sheet" data-k="pacchetto">Modifica</button></div>' : '') + '</div>';
   if (role === 'cliente' && hasPT()) { const C = condivisione(); h += '<div class="card"><h2>Cosa vede il tuo PT</h2><span class="small muted" style="line-height:1.45">' + (S.profilo.ptId ? 'Scegli tu cosa condividere con ' + esc(S.profilo.ptNome) + '. Nome, livello e lezioni rimaste sono sempre visibili, servono per le prenotazioni.' : 'Quando sarai collegato al tuo PT vedrà solo quello che attivi qui.') + '</span><div class="list">' + CONDIVIDI.map(x => '<div class="li"><span class="grow"><span class="title">' + x[1] + '</span><span class="small muted">' + x[2] + '</span></span><button type="button" class="switch" role="switch" aria-checked="' + !!C[x[0]] + '" data-a="togglecond" data-k="' + x[0] + '" aria-label="Condividi ' + x[1].toLowerCase() + ' con il PT"></button></div>').join('') + '</div></div>'; }
+  if (isAdmin()) h += '<button type="button" class="card" style="flex-direction:row;align-items:center;gap:12px" data-a="go" data-r="staffadmin">' + ic('key') + '<span class="stack" style="flex:1;gap:2px"><span style="font-weight:700">Staff e accessi</span><span class="small muted" style="line-height:1.4">Codici per i colleghi, richieste da approvare, chi è dentro</span></span>' + ic('chev', 18) + '</button>';
   if (role === 'pt' && SH.me) h += '<div class="card"><span class="small muted">Il tuo codice per i clienti</span><span class="big-num">' + esc(SH.me.codice || '') + '</span><button type="button" class="btn sm" data-a="copy" data-v="' + esc(SH.me.codice || '') + '">Copia</button></div>';
   if (role === 'cliente') h += '<button type="button" class="card" style="flex-direction:row;align-items:center;gap:12px" data-a="mcgo" data-d="' + isoDate(new Date()) + '">' + ic('cal') + '<span class="stack" style="flex:1;gap:2px"><span style="font-weight:700">Calendario</span><span class="small muted" style="line-height:1.4">Allenamenti fatti e in programma, sedute con il PT e i tuoi impegni</span></span>' + ic('chev', 18) + '</button>';
   if (role !== 'manager') h += '<button type="button" class="card soft" style="flex-direction:row;align-items:center" data-a="sheet" data-k="invita">' + ic('users') + '<span class="stack" style="flex:1"><span style="font-weight:700">Fai provare l\'app a un amico</span><span class="small muted">Link e codice pronti da mandare</span></span>' + ic('chev', 18) + '</button>';
   if (role !== 'manager') h += '<div class="card"><div class="row"><span>Modalità livelli</span><button type="button" class="switch" role="switch" aria-checked="' + !!S.impostazioni.livelli + '" data-a="togglegame" aria-label="Modalità livelli"></button></div></div>';
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 33</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 34</p>';
   return h + '</div>';
 };
 
@@ -5081,6 +5084,7 @@ SCREENS.ptoggi = function(){
     ? '<div class="li"><span class="mono" style="font-weight:600;width:88px;flex:0 0 auto">' + esc(fmtD(x.b.inizio)) + '<br>' + fmtT(x.b.inizio) + '</span><span class="grow"><span class="title">' + esc(x.b.clienteNome || 'Cliente') + '</span><span class="small muted">' + (x.b.servizio === 'pt' ? 'Personal training' : 'Massaggio') + ' · ' + x.b.durata + ' min · dall\'app</span></span><button type="button" class="btn sm" data-a="cancelbooking" data-id="' + esc(x.b._id) + '">Annulla</button></div>'
     : '<div class="li"><span class="mono" style="font-weight:600;width:88px;flex:0 0 auto">' + esc(fmtD(x.t)) + '<br>' + fmtT(x.t) + '</span><button type="button" class="liwrap" data-a="go" data-r="clientept" data-id="' + x.c.id + '"><span class="grow"><span class="title">' + esc(cliNome(x.c)) + '</span><span class="small muted">Lezione · ' + (x.l.durata || 60) + ' min</span></span></button>' + (x.l.data <= isoDate(new Date()) ? '<button type="button" class="btn sm dark" data-a="lezfatta" data-cid="' + x.c.id + '" data-lid="' + x.l.id + '">Fatta</button>' : '') + '</div>').join('') + '</div>' : '<div class="empty">Nessun appuntamento. I clienti dell\'app prenotano dai tuoi orari; per gli altri programma la lezione dalla loro scheda in Clienti.</div>') + '</div>';
   h += goalsTodayCard();
+  h += staffPendCard();
   h += '<div class="card ink"><span class="eyebrow">Il tuo codice cliente</span><span class="mono" style="font-size:26px;font-weight:600;letter-spacing:.06em">' + esc(SH.me.codice || '—') + '</span><span class="small muted">Chi lo inserisce al primo accesso diventa tuo cliente nell\'app.</span><div class="grid2"><button type="button" class="btn" data-a="copy" data-v="' + esc(SH.me.codice || '') + '">Copia codice</button><button type="button" class="btn light" data-a="sheet" data-k="invita">Invita amici</button></div></div>';
   const cl = (SH.clienti || []).slice().sort((a, b) => (a.ultimo || '') < (b.ultimo || '') ? -1 : 1);
   const risk = cl.filter(c => { const gg = c.ultimo ? daysBetween(parseDate(c.ultimo), new Date()) : null; return gg == null || gg > 10 || (c.residuo != null && c.residuo <= 1); });
@@ -5287,10 +5291,56 @@ SCREENS.export = function(){
   return h + '</div>';
 };
 SCREENS.codici = function(){
+  if (window.dcRpc) return SCREENS.staffadmin();
   let h = '<div class="screen">' + topbar('Manager', 'Codici e compensi');
   const c = SH.cfg; if (!c) return h + '<div class="busy">Caricamento…</div></div>';
   h += '<div class="card"><h2>Codici di registrazione</h2><span class="small muted">PT e GT li inseriscono al primo accesso, alla voce "Sei dello staff?".</span><div class="list">' + [['pt','Personal trainer'],['gt','Gym trainer'],['manager','Manager']].map(k => '<div class="li"><span class="grow"><span class="small muted">' + k[1] + '</span><span class="mono" style="font-size:18px;font-weight:600">' + esc(c[k[0]]) + '</span></span><button type="button" class="btn sm" data-a="copy" data-v="' + esc(c[k[0]]) + '">Copia</button><button type="button" class="btn sm" data-a="regen" data-k="' + k[0] + '">Rigenera</button></div>').join('') + '</div></div>';
   h += '<form data-form="cfg" class="card" novalidate><h2>Schede dei gym trainer</h2><div class="grid2"><div class="field"><label for="c-p">Prezzo al socio (€)</label><input id="c-p" name="prezzo" class="input mono" inputmode="decimal" value="' + c.prezzoScheda + '"></div><div class="field"><label for="c-c">Compenso al GT (€)</label><input id="c-c" name="compenso" class="input mono" inputmode="decimal" value="' + c.compensoScheda + '"></div></div><button class="btn dark" type="submit">Salva</button></form>';
+  return h + '</div>';
+};
+
+
+/* ---------- accesso staff verificato dal server (versione web) ---------- */
+function staffBlocked(){ return !!window.dcRpc && window.dcMember !== undefined && S.profilo.ruolo !== 'cliente' && !(window.dcMember && window.dcMember.stato === 'attivo'); }
+function isAdmin(){ const m = window.dcMember; return !!(window.dcRpc && m && m.stato === 'attivo' && m.admin); }
+function renderStaffWait(){
+  const m = window.dcMember; const rev = m && m.stato === 'revocato';
+  const tit = rev ? 'Accesso staff disattivato' : m ? 'Richiesta inviata' : 'Serve il codice staff';
+  const txt = rev ? 'Il responsabile di Delta Coach ha disattivato il tuo accesso come staff. Se pensi sia un errore, scrivigli: può riattivarti in un attimo.'
+    : m ? 'Hai chiesto di entrare come ' + ROLE_LABEL[m.ruolo].toLowerCase() + '. Il responsabile di Delta Coach deve approvare il tuo account: appena lo fa, tocca «Controlla di nuovo»' + (m.ruolo === 'pt' ? ' e trovi il codice da dare ai tuoi clienti.' : '.')
+    : 'Per usare l\'app come staff inserisci il codice di accesso che ti ha dato il responsabile di Delta Coach.';
+  let h = '<div class="screen notab" style="gap:18px"><div class="row start" style="gap:10px"><span class="avatar" style="background:var(--fg);color:var(--bg);border:0;border-radius:12px">Δ</span><span style="font-weight:800;letter-spacing:.02em">Delta Coach</span></div>';
+  h += '<div class="card"><span class="eyebrow">Accesso staff</span><h2>' + tit + '</h2><span class="small" style="line-height:1.5">' + txt + '</span>'
+    + (m && !rev ? '<button type="button" class="btn pri wide" data-a="dcrecheck">Controlla di nuovo</button>' : '')
+    + (!m ? '<button type="button" class="btn pri wide" data-a="staffredo">Inserisci il codice</button>' : '') + '</div>';
+  h += '<button type="button" class="btn wide" data-a="staffascliente">Uso l\'app come cliente</button>';
+  if (window.dcLogout) h += '<button type="button" class="btn wide ghost" data-a="dclogout">Esci dall\'account' + (window.dcEmail ? ' · ' + esc(window.dcEmail) : '') + '</button>';
+  return h + '</div>';
+}
+function staffPendCard(){
+  if (!isAdmin() || !SH.adm || !SH.adm.membri) return '';
+  const n = SH.adm.membri.filter(m => m.stato === 'in_attesa').length; if (!n) return '';
+  return '<button type="button" class="card" style="flex-direction:row;align-items:center;gap:12px;border-color:var(--accent)" data-a="go" data-r="staffadmin">' + ic('key') + '<span class="stack" style="flex:1;gap:2px"><span style="font-weight:700">' + (n === 1 ? '1 collega aspetta' : n + ' colleghi aspettano') + ' la tua approvazione</span><span class="small muted">Tocca per approvare o rifiutare</span></span>' + ic('chev', 18) + '</button>';
+}
+function staffInviteText(code){
+  return 'Ciao! Ti va di provare Delta Coach con i tuoi clienti? È l\'app che uso per lezioni, schede, alimentazione e progressi.\n\n1. Apri ' + APP_URL + ' e crea un account (email e password)\n2. Tocca «Sei dello staff? Accedi qui», scegli il tuo ruolo e inserisci il codice ' + code + '\n3. Ti approvo io: poi trovi il tuo codice personale da dare ai clienti.';
+}
+SCREENS.staffadmin = function(){
+  let h = '<div class="screen">' + topbar('Responsabile', 'Staff e accessi', { back: S.profilo.ruolo === 'manager' ? 'approvazioni' : 'profilo' });
+  const D = SH.adm; if (!D) return h + '<div class="busy">Caricamento…</div></div>';
+  if (D.err) return h + '<div class="card"><span class="small">Non riesco a caricare lo staff: controlla la connessione.</span><button type="button" class="btn sm" data-a="go" data-r="staffadmin">Riprova</button></div></div>';
+  const M = D.membri || []; const C = D.codici || {};
+  const who = (m, extra) => '<span class="grow"><span class="title">' + esc(m.nome || m.email || 'Staff') + (m.uid === Store.uid ? ' (tu)' : '') + '</span><span class="small muted">' + esc(ROLE_LABEL[m.ruolo] || m.ruolo) + (m.email ? ' · ' + esc(m.email) : '') + '</span>' + (extra || '') + '</span>';
+  const pend = M.filter(m => m.stato === 'in_attesa'), att = M.filter(m => m.stato === 'attivo'), rev = M.filter(m => m.stato === 'revocato');
+  h += '<div class="card"><div class="row"><h2>Richieste in attesa</h2><span class="chip' + (pend.length ? ' warn' : '') + '">' + pend.length + '</span></div>'
+    + (pend.length ? '<div class="list">' + pend.map(m => '<div class="li" style="flex-wrap:wrap;gap:10px">' + who(m, '<span class="tiny muted">chiesto il ' + esc(fmtD(m.creato)) + '</span>') + '<span class="row" style="gap:8px"><button type="button" class="btn sm" data-a="stset" data-uid="' + m.uid + '" data-v="rifiutato" data-n="' + esc(m.nome || '') + '">Rifiuta</button><button type="button" class="btn sm dark" data-a="stset" data-uid="' + m.uid + '" data-v="attivo" data-n="' + esc(m.nome || '') + '">Approva</button></span></div>').join('') + '</div>'
+      : '<div class="empty">Nessuna richiesta. Quando un collega si registra con il codice staff compare qui e decidi tu se farlo entrare.</div>') + '</div>';
+  h += '<div class="card"><div class="row"><h2>Staff attivo</h2><span class="chip">' + att.length + '</span></div><div class="list">' + att.map(m => '<div class="li" style="flex-wrap:wrap;gap:10px">' + who(m, m.ruolo === 'pt' ? '<span class="tiny muted">' + (m.codice ? 'codice clienti <span class="mono">' + esc(m.codice) + '</span> · ' : '') + m.clienti + (m.clienti === 1 ? ' cliente' : ' clienti') + ' nell\'app</span>' : '') + (m.uid !== Store.uid ? '<button type="button" class="btn sm" data-a="stset" data-uid="' + m.uid + '" data-v="revocato" data-n="' + esc(m.nome || '') + '">Disattiva</button>' : '') + '</div>').join('') + '</div></div>';
+  if (rev.length) h += '<div class="card"><div class="row"><h2>Disattivati</h2><span class="chip">' + rev.length + '</span></div><div class="list">' + rev.map(m => '<div class="li" style="flex-wrap:wrap;gap:10px">' + who(m) + '<button type="button" class="btn sm" data-a="stset" data-uid="' + m.uid + '" data-v="attivo" data-n="' + esc(m.nome || '') + '">Riattiva</button></div>').join('') + '</div></div>';
+  h += '<div class="card"><h2>Codici di accesso staff</h2><span class="small muted" style="line-height:1.45">Li dai ai colleghi: chi si registra con un codice entra in attesa finché non lo approvi. Se un codice gira troppo, rigeneralo: chi è già dentro non perde l\'accesso.</span><div class="list">'
+    + [['pt','Personal trainer'],['gt','Gym trainer'],['manager','Manager']].map(k => '<div class="li"><span class="grow"><span class="small muted">' + k[1] + '</span><span class="mono" style="font-size:18px;font-weight:600">' + esc(C[k[0]] || '—') + '</span></span><button type="button" class="btn sm" data-a="copy" data-v="' + esc(C[k[0]] || '') + '">Copia</button><button type="button" class="btn sm" data-a="stregen" data-k="' + k[0] + '">Rigenera</button></div>').join('') + '</div>'
+    + (C.pt ? '<button type="button" class="btn dark wide" data-a="copy" data-v="' + esc(staffInviteText(C.pt)) + '">' + ic('users', 18) + ' Copia l\'invito per un collega PT</button>' : '') + '</div>';
+  h += '<div class="card soft"><span class="small muted" style="line-height:1.45">Ogni PT vede solo i clienti che hanno inserito il suo codice, e di loro solo quello che il cliente sceglie di condividere. Un manager approvato può gestire anche questa pagina.</span></div>';
   return h + '</div>';
 };
 
@@ -5966,6 +6016,22 @@ const A = {
   },
   toggledone(){ UI.showDone = !UI.showDone; render(); },
   copy(ds){ if (ds.v) copyText(ds.v); },
+  async dcrecheck(){
+    try { window.dcMember = await window.dcRpc('dc_me'); } catch(e) { toast('Connessione assente, riprova'); return; }
+    const m = window.dcMember;
+    if (m && m.stato === 'attivo') { S.profilo.ruolo = m.ruolo; save(); let ex = null; try { ex = await Store.get('staff/' + Store.uid); } catch(e){} if (!ex) SH.me = await ensureStaff(); toast('Accesso approvato: benvenuto!'); go(ROOT_ROUTES[m.ruolo]); }
+    else { toast(m && m.stato === 'revocato' ? 'Accesso disattivato' : 'Ancora in attesa di approvazione'); render(); }
+  },
+  staffredo(){ S.profilo.onboarded = false; UI.login.mode = 'staff'; if (ROLE_LABEL[S.profilo.ruolo] && S.profilo.ruolo !== 'cliente') UI.login.role = S.profilo.ruolo; save(); UI.err = ''; render(); },
+  staffascliente(){ ask('Usare l\'app come cliente?', 'Entri come cliente: puoi collegarti al tuo PT con il suo codice oppure usarla da solo. La richiesta staff resta dov\'è.', 'Continua come cliente', () => { S.profilo.ruolo = null; S.profilo.onboarded = false; UI.login.mode = 'cliente'; save(); }); },
+  async stset(ds){
+    const run = async () => { try { await window.dcRpc('dc_admin_set', { p_uid: ds.uid, p_stato: ds.v }); toast(ds.v === 'attivo' ? (ds.n || 'Collega') + ' è dentro' : ds.v === 'rifiutato' ? 'Richiesta rifiutata' : 'Accesso disattivato'); } catch(e) { toast('Non riuscito, riprova'); }
+      try { SH.adm = await window.dcRpc('dc_admin_overview'); } catch(e) {} render(); };
+    if (ds.v === 'revocato') ask('Disattivare ' + (ds.n || 'questo account') + '?', 'Non vedrà più i dati dei suoi clienti e nessuno potrà più collegarsi con il suo codice. Puoi riattivarlo quando vuoi.', 'Disattiva', run);
+    else if (ds.v === 'rifiutato') ask('Rifiutare la richiesta di ' + (ds.n || 'questa persona') + '?', 'Potrà usare l\'app come cliente. Se cambi idea, dovrà registrarsi di nuovo con il codice staff.', 'Rifiuta', run);
+    else run();
+  },
+  stregen(ds){ ask('Rigenerare il codice?', 'Il codice attuale smette di funzionare per chi deve ancora registrarsi. Chi è già dentro non perde l\'accesso.', 'Rigenera', async () => { try { await window.dcRpc('dc_admin_regen', { p_ruolo: ds.k }); SH.adm = await window.dcRpc('dc_admin_overview'); toast('Nuovo codice pronto'); } catch(e) { toast('Non riuscito, riprova'); } }); },
   copycsv(){ copyText($('#csvout').value, '#csvout'); },
   savecsv(){ saveFile('ore-staff-' + UI.mese + '.csv', csvFor(UI.mese)); },
   exportme(){ UI.sheet = { k: 'export', d: {} }; render(); },
@@ -6201,13 +6267,18 @@ const FORMS = {
     else { const doc = await Store.get('codici_pt/' + code); if (!doc) { UI.err = 'Codice non trovato. Controllalo con il tuo PT, oppure usa ' + DEMO_CODE + ' per provare.'; render(); return; } ptId = doc.pt; ptNome = doc.nome || 'Il tuo PT'; }
     Object.assign(S.profilo, { ruolo: 'cliente', ptCode: code, ptId, ptNome, offline, onboarded: true, consenso: Date.now() });
     if (!S.profilo.pacchetto) S.profilo.pacchetto = { totale: 12, inizio: isoDate(new Date()), scadenza: '' };
-    save(); UI.err = ''; await go('home'); if (datiMissing().length) { UI.sheet = { k: 'dati', d: { primo: 1 } }; render(); } else if (!S.guida) { S.guidaVista = 1; save(); UI.sheet = { k: 'obgen', d: { primo: 1 } }; render(); }
+    save(); if (ptId) { try { await pushSummary(); } catch(e){} } UI.err = ''; await go('home'); if (datiMissing().length) { UI.sheet = { k: 'dati', d: { primo: 1 } }; render(); } else if (!S.guida) { S.guidaVista = 1; save(); UI.sheet = { k: 'obgen', d: { primo: 1 } }; render(); }
   },
   async loginStaff(fd){
-    const code = String(fd.get('code') || '').trim().toUpperCase(); const nome = String(fd.get('nome') || '').trim(); const role = UI.login.role;
+    const code = String(fd.get('code') || '').trim().toUpperCase(); const nome = String(fd.get('nome') || '').trim(); let role = UI.login.role;
     UI.login.scode = code; S.profilo.nome = nome;
     if (!code || !nome) { UI.err = 'Inserisci codice staff e nome.'; render(); return; }
-    const cfg = await getCfg(); if (code !== String(cfg[role]).toUpperCase()) { UI.err = 'Codice non valido per il ruolo ' + ROLE_LABEL[role].toLowerCase() + '. Chiedilo al manager.'; render(); return; }
+    if (window.dcRpc) {
+      let mem = null; try { mem = await window.dcRpc('dc_join_staff', { p_code: code, p_nome: nome }); }
+      catch(e) { UI.err = /codice_non_valido/.test(String(e && e.message)) ? 'Codice non valido. Chiedilo al responsabile di Delta Coach.' : 'Non riesco a verificare il codice: controlla la connessione e riprova.'; render(); return; }
+      window.dcMember = mem; role = mem.ruolo;
+      if (mem.stato !== 'attivo') { Object.assign(S.profilo, { ruolo: role, onboarded: true }); save(); UI.err = ''; render(); return; }
+    } else { const cfg = await getCfg(); if (code !== String(cfg[role]).toUpperCase()) { UI.err = 'Codice non valido per il ruolo ' + ROLE_LABEL[role].toLowerCase() + '. Chiedilo al manager.'; render(); return; } }
     const existing = await Store.get('staff/' + Store.uid);
     const doc = Object.assign({}, existing || {}, { nome, ruolo: role, aggiornato: Date.now() });
     if (role === 'pt') {

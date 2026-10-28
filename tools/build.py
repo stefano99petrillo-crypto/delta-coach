@@ -29,6 +29,11 @@ app = rep(app, "const A = {", "const A = {\n  dclogout(){ if (window.dcLogout) w
 app = re.sub(r"h \+= '<p class=\"tiny muted\" style=\"margin:0;text-align:center\">Delta Coach · versione di prova (\d+)</p>';",
              lambda m: "if (window.dcLogout) h += '<button type=\"button\" class=\"btn wide ghost\" data-a=\"dclogout\">Esci dall\\'account' + (window.dcEmail ? ' · ' + esc(window.dcEmail) : '') + '</button>';\n  h += '<p class=\"tiny muted\" style=\"margin:0;text-align:center\">Delta Coach · versione " + m.group(1) + " · web</p>';", app, count=1)
 assert 'dclogout' in app
+app = rep(app, "const APP_URL = 'https://claude.ai/artifact/YStMEt7SUf3To1ExRMN3Zt';", "const APP_URL = 'https://delta-coach.vercel.app';")
+app = rep(app, "Scegli il tuo ruolo e inserisci il codice che ti ha dato il manager della palestra.", "Scegli il tuo ruolo e inserisci il codice staff che ti ha dato il responsabile di Delta Coach. Dopo la sua approvazione entri.")
+# i codici staff veri stanno sul server (tabella dc_codes): nel codice pubblico non restano codici validi
+app = rep(app, "const DEFAULT_CFG = { pt: 'PT-7Q4K', gt: 'GT-2M9X', manager: 'MGR-5R8L',", "const DEFAULT_CFG = { pt: '', gt: '', manager: '',")
+app = rep(app, "\\n\\n1. Apri questo link: ' + APP_URL + '\\n2. Scegli", "\\n\\n1. Apri ' + APP_URL + ' e crea il tuo account (email e password)\\n2. Scegli")
 
 build = hashlib.sha1(app.encode('utf-8')).hexdigest()[:10]
 head_extra = (
