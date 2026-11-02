@@ -380,6 +380,7 @@ function nextDay(sc){ sc = sc || S.scheda; const g = sc.giorni; if (!g.length) r
 /* ---------- pacchetto e prenotazioni ---------- */
 function myBookings(){ return (SH.pren || []).filter(b => b.cliente === Store.uid); }
 function pkgInfo(){
+  const D = typeof dalpt === 'function' ? dalpt() : null; if (D && D.pacchetto && D.pacchetto.tot) return { tot: D.pacchetto.tot, used: D.pacchetto.used, left: D.pacchetto.left, scadenza: D.pacchetto.scadenza };
   const p = S.profilo.pacchetto || { totale: 12, inizio: isoDate(new Date()) };
   const since = parseDate(p.inizio || isoDate(new Date())).getTime();
   const used = myBookings().filter(b => b.servizio === 'pt' && (b.stato === 'confermata' || b.stato === 'annullata_tardi') && b.creato >= since).length;
@@ -387,8 +388,32 @@ function pkgInfo(){
 }
 async function loadBookings(){
   const pt = S.profilo.ptId || 'demo';
-  const res = await Promise.all([Store.query('prenotazioni', 'pt', pt), S.profilo.ptId ? Store.get('staff/' + S.profilo.ptId) : Promise.resolve(null)]);
-  SH.pren = res[0]; SH.ptDoc = res[1];
+  const res = await Promise.all([Store.query('prenotazioni', 'pt', pt), S.profilo.ptId ? Store.get('staff/' + S.profilo.ptId) : Promise.resolve(null), S.profilo.ptId && Store.db && Store.uid ? Store.get('dalpt/' + Store.uid) : Promise.resolve(null)]);
+  SH.pren = res[0]; SH.ptDoc = res[1]; SH.dalpt = res[2] && res[2].pt === S.profilo.ptId ? res[2] : null;
+}
+/* il PT ha abbinato questo account alla sua scheda cliente: lezioni, pacchetto, sedute, scheda e misure registrate da lui */
+function dalpt(){ return ptLinked() && SH.dalpt ? SH.dalpt : null; }
+function dalptNext(D){ const now = isoDate(new Date()); return (D.lezioni || []).filter(l => l.stato === 'programmata' && l.data >= now).sort((a, b) => (a.data + a.ora) < (b.data + b.ora) ? -1 : 1)[0] || null; }
+function dalptCard(){
+  const D = dalpt(); if (!D) return '';
+  const P = D.pacchetto || {}; const nx = dalptNext(D); const fatte = (D.lezioni || []).filter(l => l.stato === 'fatta'); const last = fatte[0];
+  let h = '<button type="button" class="card" data-a="sheet" data-k="dalpt"><div class="row"><span class="eyebrow">Dal tuo PT · ' + esc(D.ptNome || S.profilo.ptNome) + '</span>' + ic('chev', 18) + '</div>';
+  if (P.tot) h += '<div class="row"><span class="big-num">' + P.left + ' <span class="small muted">lezioni rimaste su ' + P.tot + '</span></span><span class="small muted mono">' + P.used + ' fatte</span></div><div class="pkg" style="grid-template-columns:repeat(' + Math.max(1, Math.min(P.tot, 40)) + ',minmax(0,1fr))">' + Array.from({ length: Math.min(P.tot, 40) }, (_, i) => '<span style="background:' + (i < P.used ? 'var(--fg)' : 'var(--line)') + '"></span>').join('') + '</div>';
+  h += '<span class="small muted">' + esc([nx ? 'Prossima lezione ' + fmtD(parseDate(nx.data)) + (nx.ora ? ' alle ' + nx.ora : '') : '', last ? 'ultima ' + fmtD(parseDate(last.data)) : '', P.scadenza ? 'pacchetto valido fino al ' + fmtD(parseDate(P.scadenza)) : '', D.scheda ? 'scheda: ' + D.scheda.nome : ''].filter(Boolean).join(' · ') || 'Lezioni, sedute, scheda e misure registrate dal tuo PT') + '</span>';
+  return h + '</button>';
+}
+function sheetDalpt(){
+  const D = dalpt(); const close = '<button type="button" class="btn" data-a="closesheet">Chiudi</button>'; if (!D) return '<h2>Niente dal tuo PT</h2>' + close;
+  const P = D.pacchetto || {}; const st = { fatta: ['ok', 'Fatta'], programmata: ['warn', 'In programma'], annullata: ['', 'Annullata'] };
+  let h = '<span class="eyebrow">Dal tuo PT</span><h2>' + esc(D.ptNome || S.profilo.ptNome) + '</h2><span class="tiny muted">Aggiornato ' + esc(fmtD(D.aggiornato)) + ' ' + fmtT(D.aggiornato) + '. Questi dati li registra il tuo PT: per correggerli chiedi a lui.</span>';
+  h += '<div class="card"><span class="eyebrow">Pacchetto</span>' + (P.tot ? '<span class="small"><strong>' + P.used + '</strong> lezioni fatte su ' + P.tot + (P.inizio ? ' dal ' + esc(fmtD(parseDate(P.inizio))) : '') + ' · <strong>' + P.left + '</strong> rimaste' + (P.scadenza ? ' · valido fino al ' + esc(fmtD(parseDate(P.scadenza))) : '') + '</span>' : '<span class="small muted">Nessun pacchetto registrato.</span>') + '</div>';
+  const L = D.lezioni || []; h += '<div class="card"><span class="eyebrow">Lezioni</span>' + (L.length ? '<div class="list">' + L.slice(0, 30).map(l => '<div class="li"><span class="mono" style="font-weight:600;width:76px;flex:0 0 auto;font-size:13px">' + esc(fmtD(parseDate(l.data))) + '<br>' + esc(l.ora || '') + '</span><span class="grow"><span class="small">' + esc(l.nota || (l.durata || 60) + ' min') + '</span></span><span class="chip ' + ((st[l.stato] || [])[0] || '') + '">' + esc((st[l.stato] || [])[1] || l.stato) + '</span></div>').join('') + '</div>' : '<span class="small muted">Ancora nessuna lezione.</span>') + '</div>';
+  const SD = D.sedute || []; h += '<div class="card"><span class="eyebrow">Sedute con il PT</span>' + (SD.length ? SD.map(s => '<details style="padding:4px 0;border-top:1px solid var(--line)"><summary class="row" style="cursor:pointer;list-style:none"><span class="stack" style="gap:2px"><span style="font-weight:600">' + esc(s.giorno || 'Seduta') + '</span><span class="tiny muted">' + esc(fmtD(s.inizio)) + (s.min ? ' · ' + fmtMin(s.min) : '') + ' · ' + (s.esercizi || []).length + ' esercizi</span></span>' + ic('chev', 14) + '</summary><div class="stack" style="gap:4px;padding-top:6px">' + (s.esercizi || []).map(e => '<div class="row"><span class="small">' + esc(e.nome) + '</span><span class="mono tiny muted" style="text-align:right">' + esc((e.serie || []).map(x => (x.kg ? x.kg + '×' : '') + (x.rip || '–') + (e.unita === 'sec' ? 's' : e.unita === 'min' ? '′' : '')).join('  ')) + '</span></div>').join('') + '</div></details>').join('') : '<span class="small muted">Il tuo PT non ha ancora registrato sedute con te.</span>') + '</div>';
+  const SC = D.scheda; if (SC) h += '<div class="card"><div class="row"><span class="eyebrow">Scheda attiva · ' + esc(SC.nome) + '</span></div>' + (SC.giorni || []).map(g => '<div class="stack" style="gap:4px;padding-top:6px"><span style="font-weight:700">' + esc(g.nome) + '</span>' + (g.esercizi || []).map(e => '<div class="row"><span class="stack" style="gap:0"><span class="small">' + esc(e.nome) + '</span>' + (e.nota ? '<span class="tiny muted">' + esc(e.nota) + '</span>' : '') + '</span><span class="mono small">' + esc(e.serie + '×' + e.rip + (e.unita === 'sec' ? 's' : e.unita === 'min' ? '′' : '') + (e.rec ? ' · ' + e.rec + 's' : '')) + '</span></div>').join('') + '</div>').join('') + '<button type="button" class="btn out" data-a="usaschedapt">' + ic('dumbbell', 16) + ' Usala per allenarti da solo</button></div>';
+  const M = D.misure || []; if (M.length) h += '<div class="card"><span class="eyebrow">Misure</span>' + (M.filter(m => m.peso).length > 1 ? lineChart(M.filter(m => m.peso).map(m => ({ x: fmtD(parseDate(m.data)), y: +m.peso })), 'kg') : '') + '<div class="list">' + M.slice().reverse().map(m => '<div class="li"><span class="grow"><span class="title">' + esc(fmtD(parseDate(m.data))) + '</span><span class="small muted mono">' + esc([m.peso ? fmtN(m.peso) + ' kg' : '', m.grasso ? 'grasso ' + fmtN(m.grasso) + '%' : '', m.magra ? 'magra ' + fmtN(m.magra) + ' kg' : '', m.vita ? 'vita ' + fmtN(m.vita, 0) + ' cm' : ''].filter(Boolean).join(' · ')) + '</span></span></div>').join('') + '</div></div>';
+  if (D.note && D.note.length) h += '<div class="card"><span class="eyebrow">Note del PT</span><div class="list">' + D.note.slice().reverse().map(n => '<div class="li"><span class="grow"><span class="tiny muted">' + esc(fmtD(parseDate(n.data))) + '</span><span class="small" style="white-space:pre-wrap;line-height:1.45">' + esc(n.testo) + '</span></span></div>').join('') + '</div></div>';
+  if (D.anamnesi) h += '<div class="card"><span class="eyebrow">La tua anamnesi</span>' + (D.anamnesi.sezioni || []).map(s => '<div class="stack" style="gap:6px;padding-top:6px"><span class="tiny muted" style="font-weight:700">' + esc(s.s) + '</span><dl class="kv">' + (s.rows || []).map(r => '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>').join('') + '</dl></div>').join('') + '</div>';
+  return h + close;
 }
 async function getCfg(){ const c = await Store.get('config/codici'); return Object.assign({}, DEFAULT_CFG, c || {}); }
 
@@ -684,7 +709,39 @@ const ANAM = [
   { k: 'note', l: 'Note', t: 'area' }
 ]);
 function cliList(){ return Object.keys(CLI).map(k => CLI[k]); }
-function saveCli(c){ CLI[c.id] = c; Store.savePrivate('cl-' + c.id, c); }
+function saveCli(c){ CLI[c.id] = c; Store.savePrivate('cl-' + c.id, c); if (c.appUid) pubCliLater(c.id); }
+/* ---------- dal PT al cliente: quello che il PT registra per un cliente abbinato lo vede anche il cliente nella sua app ---------- */
+const PUB_T = {};
+const PUB_DONE = {};
+function pubAllOnce(){ const on = {}; (SH.clienti || []).forEach(x => { on[x._id] = 1; }); cliList().forEach(c => { if (c.appUid && on[c.appUid] && !c.archiviato && !PUB_DONE[c.id]) { PUB_DONE[c.id] = 1; pubCliLater(c.id); } }); }
+function pubCliLater(id){ clearTimeout(PUB_T[id]); PUB_T[id] = setTimeout(() => { delete PUB_T[id]; pubCli(CLI[id]).catch(() => {}); }, 1200); }
+function dalptDoc(c){
+  const pk = cliPkg(c); const p = c.pacchetto || {};
+  const sc = (c.schede || []).find(x => x.id === c.schedaId) || (c.schede || [])[0] || null;
+  const doc = { pt: Store.uid, cliente: c.appUid, nome: cliNome(c), ptNome: (SH.me && SH.me.nome) || S.profilo.nome || 'Il tuo PT', aggiornato: Date.now(),
+    pacchetto: { tot: pk.tot, used: pk.used, left: pk.left, inizio: p.inizio || '', scadenza: pk.scadenza || '' },
+    lezioni: (c.lezioni || []).slice().sort((a, b) => (a.data + (a.ora || '')) < (b.data + (b.ora || '')) ? 1 : -1).slice(0, 60).map(l => ({ data: l.data, ora: l.ora || '', durata: l.durata || 60, stato: l.stato, nota: String(l.nota || '').slice(0, 200) })),
+    sedute: (c.sessioni || []).slice().sort((a, b) => b.inizio - a.inizio).slice(0, 20).map(s => ({ inizio: s.inizio, giorno: s.giorno || '', min: s.durMin || 0, esercizi: (s.esercizi || []).map(e => ({ nome: e.nome, unita: e.unita || '', serie: (e.serie || []).filter(x => x.ok !== false || x.rip).map(x => ({ kg: x.kg || '', rip: x.rip || '' })) })) })),
+    scheda: sc ? { nome: sc.nome || 'Scheda', giorni: (sc.giorni || []).map(g => ({ nome: g.nome, esercizi: (g.esercizi || []).map(e => ({ nome: e.nome, tipo: e.tipo, unita: e.unita || '', serie: e.serie, rip: e.rip, rec: e.rec, nota: e.nota || '' })) })) } : null,
+    misure: (c.misure || []).slice().sort((a, b) => a.data < b.data ? -1 : 1).map(m => ({ data: m.data, peso: m.peso || null, grasso: m.grasso || null, magra: m.magra || null, vita: m.vita || null })),
+    note: c.condNote ? (c.noteLog || []).slice(-40).map(n => ({ data: n.data, testo: n.testo })) : null,
+    anamnesi: c.condAnam ? { sezioni: anamSections(c).map(s => ({ s: s.s, rows: s.rows })), parq: parqState(c) } : null };
+  return doc;
+}
+async function pubCli(c){
+  if (!c || !c.appUid || !Store.db || S.profilo.ruolo !== 'pt' || c.archiviato) return;
+  try { await Store.set('dalpt/' + c.appUid, dalptDoc(c)); } catch(e) { console.warn('dalpt', e); }
+}
+function nomeNorm(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+/* quanto il nome con cui il cliente si è collegato somiglia a una scheda cliente del PT: 3 nome e cognome uguali, 2 stesso nome e cognome compatibile, 1 solo il nome */
+function nomeScore(appNome, c){
+  const a = nomeNorm(appNome).split(' ').filter(Boolean), b = nomeNorm(cliNome(c)).split(' ').filter(Boolean); if (!a.length || !b.length) return 0;
+  if (a.join(' ') === b.join(' ') && a.length > 1) return 3;
+  if (a[0] !== b[0]) return 0;
+  if (a.length > 1 && b.length > 1) return a.slice(1).join(' ') === b.slice(1).join(' ') ? 3 : a[a.length - 1][0] === b[b.length - 1][0] ? 1 : 0;
+  return 2;
+}
+function abbinaProposte(appNome){ return cliList().filter(c => !c.appUid && !c.archiviato).map(c => ({ c, s: nomeScore(appNome, c) })).filter(x => x.s > 0).sort((x, y) => y.s - x.s || cliNome(x.c).localeCompare(cliNome(y.c))); }
 function cliNome(c){ return [c.nome, c.cognome].filter(Boolean).join(' ') || 'Cliente'; }
 function cliPkg(c){ const p = c.pacchetto || {}; const tot = +p.totale || 0; const since = p.inizio || '0000'; const used = (c.lezioni || []).filter(l => l.stato === 'fatta' && l.data >= since).length; return { tot, used, left: Math.max(0, tot - used), scadenza: p.scadenza || '' }; }
 function cliLast(c){ const f = (c.lezioni || []).filter(l => l.stato === 'fatta').map(l => l.data).sort(); return f[f.length - 1] || null; }
@@ -1376,10 +1433,10 @@ async function loadFor(r){
   if (role === 'cliente' && (r === 'home' || r === 'prenota')) { await loadBookings(); if (r === 'home') pushSummary(); }
   if (r === 'ptoggi') {
     const res = await Promise.all([Store.query('prenotazioni', 'pt', Store.uid), Store.query('condivisi', 'pt', Store.uid), Store.get('staff/' + Store.uid)]);
-    SH.ptPren = res[0]; SH.clienti = res[1]; SH.me = res[2] || await ensureStaff();
+    SH.ptPren = res[0]; SH.clienti = res[1]; SH.me = res[2] || await ensureStaff(); pubAllOnce();
   }
   if (r === 'profilo' && role === 'pt') SH.me = (await Store.get('staff/' + Store.uid)) || await ensureStaff();
-  if ((r === 'agenda' || r === 'clientept') && role === 'pt') { const res = await Promise.all([Store.query('condivisi', 'pt', Store.uid), SH.me ? Promise.resolve(SH.me) : Store.get('staff/' + Store.uid), Store.query('prenotazioni', 'pt', Store.uid), Store.query('approvazioni', 'autore', Store.uid), getCfg()]); SH.clienti = res[0]; SH.me = res[1] || await ensureStaff(); SH.ptPren = res[2]; SH.mie = res[3]; SH.cfg = res[4]; }
+  if ((r === 'agenda' || r === 'clientept') && role === 'pt') { const res = await Promise.all([Store.query('condivisi', 'pt', Store.uid), SH.me ? Promise.resolve(SH.me) : Store.get('staff/' + Store.uid), Store.query('prenotazioni', 'pt', Store.uid), Store.query('approvazioni', 'autore', Store.uid), getCfg()]); SH.clienti = res[0]; SH.me = res[1] || await ensureStaff(); SH.ptPren = res[2]; SH.mie = res[3]; SH.cfg = res[4]; pubAllOnce(); }
   if (r === 'lavoro' || r === 'vendite' || r === 'gtoggi') { SH.mie = await Store.query('approvazioni', 'autore', Store.uid); SH.cfg = await getCfg(); }
   if (role === 'manager') { const res = await Promise.all([Store.query('approvazioni'), Store.query('staff'), getCfg()]); SH.ap = res[0]; SH.staff = res[1]; SH.cfg = res[2]; }
 }
@@ -1431,7 +1488,7 @@ function renderLogin(){
     body = '<div class="stack" style="gap:8px;margin-top:12px"><h1 style="font-size:32px">Benvenuto in Delta Coach</h1><p class="muted" style="margin:0;line-height:1.5">Allenamento, alimentazione, abitudini e recupero in un\'unica app, con l\'AI che ti aiuta a migliorare ogni giorno.</p></div>'
       + '<button type="button" class="rpbtn" data-a="riprendi">' + ic('ripresa', 24) + '<span class="stack" style="gap:2px;flex:1"><span style="font-weight:700">Hai già usato Delta Coach?</span><span class="small muted">Riprendi da dove eri con il tuo codice</span></span>' + ic('chev', 18) + '</button>'
       + '<form data-form="loginCliente" class="stack" style="gap:14px" novalidate>'
-      + '<div class="field"><label for="f-nome">Il tuo nome</label><input id="f-nome" name="nome" class="input big" value="' + esc(s.nome || '') + '" maxlength="40" autocomplete="given-name"></div>'
+      + '<div class="field"><label for="f-nome">' + (si ? 'Nome e cognome' : 'Il tuo nome') + '</label><input id="f-nome" name="nome" class="input big" value="' + esc(s.nome || '') + '" maxlength="60" autocomplete="' + (si ? 'name' : 'given-name') + '">' + (si ? '<span class="tiny muted">Come ti conosce il tuo PT: così ti abbina subito alla tua scheda.</span>' : '') + '</div>'
       + '<div class="field"><span class="flabel">Ti segue un personal trainer?</span><div class="seg"><button type="button" data-a="loginpt" data-v="no" aria-selected="' + !si + '">No, uso l\'app da solo</button><button type="button" data-a="loginpt" data-v="si" aria-selected="' + si + '">Sì, ho il suo codice</button></div></div>'
       + (si ? '<div class="field"><label for="f-code">Codice del tuo PT</label><input id="f-code" name="code" class="input big" autocomplete="off" autocapitalize="characters" placeholder="ES. STEF-4821" value="' + esc(L.code || '') + '"><span class="tiny muted">Per provare senza un PT vero: <span class="mono" style="color:var(--fg)">' + DEMO_CODE + '</span></span></div>' + (Store.db ? '' : '<div class="card soft"><span class="small" style="line-height:1.5">In questa visualizzazione l\'app non può collegarsi al PT: puoi usarla lo stesso, i dati restano su questo dispositivo.</span></div>') : '<span class="tiny muted" style="line-height:1.4">Potrai collegare un PT quando vuoi dal Profilo.</span>')
       + '<div class="field"><span class="flabel">I titoli dei livelli al</span><div class="pills">' + genderPills(s.genere) + '</div></div>'
@@ -1768,8 +1825,10 @@ SCREENS.home = function(){
   h += '<div class="card ink"><span class="eyebrow">Prossima seduta</span>';
   if (!SH.pren) h += '<span class="muted small">Caricamento…</span>';
   else if (next) h += '<span style="font-size:24px;font-weight:700">' + esc(fmtD(next.inizio)) + ' · ' + fmtT(next.inizio) + '</span><span class="muted small">' + (next.servizio === 'pt' ? 'Personal training' : 'Massaggio') + ' con ' + esc(S.profilo.ptNome) + ' · ' + next.durata + ' min</span><div class="row" style="gap:8px"><button type="button" class="btn" style="flex:1" data-a="cancelbooking" data-id="' + esc(next._id) + '">Annulla</button><button type="button" class="btn light" style="flex:1" data-a="go" data-r="prenota">Prenota</button></div>';
+  else if (dalpt() && dalptNext(dalpt())) { const nx = dalptNext(dalpt()); h += '<span style="font-size:24px;font-weight:700">' + esc(fmtD(parseDate(nx.data))) + (nx.ora ? ' · ' + esc(nx.ora) : '') + '</span><span class="muted small">Lezione con ' + esc(S.profilo.ptNome) + ' · ' + (nx.durata || 60) + ' min · fissata dal tuo PT</span>'; }
   else h += '<span style="font-size:20px;font-weight:700">Nessuna seduta in programma</span><button type="button" class="btn light" data-a="go" data-r="prenota">Prenota con ' + esc(S.profilo.ptNome) + '</button>';
   h += '</div>'; }
+  h += dalptCard();
   h += recapHomeCard();
   h += memoriaCard();
   h += salvaCard();
@@ -2227,7 +2286,7 @@ SCREENS.profilo = function(){
   }
   if (role === 'cliente' && !hasPT()) h += ptCardSolo();
   if (role === 'cliente' && !ptLinked()) h += lezioniCard() || '<button type="button" class="btn sm" data-a="lezsi">Tieni il conto delle lezioni con un trainer</button>';
-  if (role === 'cliente' && hasPT()) h += '<div class="card"><div class="row"><div class="stack"><span class="small muted">Il tuo PT</span><span style="font-weight:700">' + esc(p.ptNome) + '</span><span class="tiny muted mono">' + esc(p.ptCode) + '</span></div><button type="button" class="btn sm" data-a="confirm" data-what="unlink">Cambia o scollega</button></div>' + (ptLinked() ? '<div class="row"><span class="small">Pacchetto: ' + (p.pacchetto.totale || 0) + ' lezioni dal ' + esc(fmtD(parseDate(p.pacchetto.inizio))) + '</span><button type="button" class="link" data-a="sheet" data-k="pacchetto">Modifica</button></div>' : '') + '</div>';
+  if (role === 'cliente' && hasPT()) h += '<div class="card"><div class="row"><div class="stack"><span class="small muted">Il tuo PT</span><span style="font-weight:700">' + esc(p.ptNome) + '</span><span class="tiny muted mono">' + esc(p.ptCode) + '</span></div><button type="button" class="btn sm" data-a="confirm" data-what="unlink">Cambia o scollega</button></div>' + (dalpt() && dalpt().pacchetto && dalpt().pacchetto.tot ? '<div class="row"><span class="small">Pacchetto: ' + dalpt().pacchetto.used + ' lezioni fatte su ' + dalpt().pacchetto.tot + ' · lo aggiorna il tuo PT</span><button type="button" class="link" data-a="sheet" data-k="dalpt">Dettagli</button></div>' : ptLinked() ? '<div class="row"><span class="small">Pacchetto: ' + (p.pacchetto.totale || 0) + ' lezioni dal ' + esc(fmtD(parseDate(p.pacchetto.inizio))) + '</span><button type="button" class="link" data-a="sheet" data-k="pacchetto">Modifica</button></div>' : '') + '</div>';
   if (role === 'cliente' && hasPT()) { const C = condivisione(); h += '<div class="card"><h2>Cosa vede il tuo PT</h2><span class="small muted" style="line-height:1.45">' + (S.profilo.ptId ? 'Scegli tu cosa condividere con ' + esc(S.profilo.ptNome) + '. Nome, livello e lezioni rimaste sono sempre visibili, servono per le prenotazioni.' : 'Quando sarai collegato al tuo PT vedrà solo quello che attivi qui.') + '</span><div class="list">' + CONDIVIDI.map(x => '<div class="li"><span class="grow"><span class="title">' + x[1] + '</span><span class="small muted">' + x[2] + '</span></span><button type="button" class="switch" role="switch" aria-checked="' + !!C[x[0]] + '" data-a="togglecond" data-k="' + x[0] + '" aria-label="Condividi ' + x[1].toLowerCase() + ' con il PT"></button></div>').join('') + '</div></div>'; }
   if (isAdmin()) h += '<button type="button" class="card" style="flex-direction:row;align-items:center;gap:12px" data-a="go" data-r="staffadmin">' + ic('key') + '<span class="stack" style="flex:1;gap:2px"><span style="font-weight:700">Staff e accessi</span><span class="small muted" style="line-height:1.4">Codici per i colleghi, richieste da approvare, chi è dentro</span></span>' + ic('chev', 18) + '</button>';
   if (role === 'pt' && SH.me) h += '<div class="card"><span class="small muted">Il tuo codice per i clienti</span><span class="big-num">' + esc(SH.me.codice || '') + '</span><button type="button" class="btn sm" data-a="copy" data-v="' + esc(SH.me.codice || '') + '">Copia</button></div>';
@@ -2385,7 +2444,7 @@ function clTabAllenamenti(c){
   if (ss.length >= 2) { const weeks = []; for (let i = 7; i >= 0; i--) { const w = weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000)); weeks.push({ x: fmtD(parseDate(w)), y: ss.filter(s => weekKey(new Date(s.inizio)) === w).reduce((a, s) => a + (s.esercizi || []).reduce((b, e) => b + (e.tipo === 'cardio' ? 0 : (e.serie || []).reduce((q, st) => q + (+st.kg || 0) * (+st.rip || 0), 0)), 0), 0) }); } h += '<div class="card"><h2>Volume a settimana</h2>' + lineChart(weeks, 'kg') + '</div>'; }
   h += '<div class="card"><h2>Storico allenamenti</h2>' + (ss.length ? '<div class="list">' + ss.slice(-8).reverse().map(s => { const ser = s.esercizi.reduce((a, e) => a + e.serie.length, 0); const v = s.esercizi.reduce((a, e) => a + (e.tipo === 'cardio' ? 0 : e.serie.reduce((b, st) => b + (+st.kg || 0) * (+st.rip || 0), 0)), 0); const d = new Date(s.inizio);
     return '<div class="li"><button type="button" class="liwrap" data-a="clsess" data-cid="' + c.id + '" data-id="' + s.id + '"><span class="dbox"><b>' + d.getDate() + '</b><span>' + MM[d.getMonth()] + '</span></span><span class="grow"><span class="title">' + esc(s.giorno) + '</span><span class="small muted">' + fmtMin(s.durMin) + ' · ' + ser + ' serie' + (v ? ' · ' + fmtK(v) + ' kg' : '') + '</span></span>' + ic('chev', 18) + '</button></div>'; }).join('') + '</div>' : '<div class="empty">Qui compaiono gli allenamenti che fai con ' + esc(c.nome || 'il cliente') + ', con serie, carichi e record.</div>') + '</div>';
-  if (c.appUid) h += '<span class="tiny muted" style="line-height:1.4">' + esc(c.nome || 'Il cliente') + ' usa anche l\'app: questa scheda e questo storico sono i tuoi, lui ha i suoi nel suo account.</span>';
+  if (c.appUid) h += '<span class="tiny muted" style="line-height:1.4">' + esc(c.nome || 'Il cliente') + ' usa anche l\'app: le sedute che registri qui le vede anche lui; quelle che fa da solo restano nel suo account.</span>';
   return h;
 }
 function clSummaryExtra(x){
@@ -4659,7 +4718,7 @@ SCREENS.ptoggi = function(){
   const cl = (SH.clienti || []).slice().sort((a, b) => (a.ultimo || '') < (b.ultimo || '') ? -1 : 1);
   const risk = cl.filter(c => { const gg = c.ultimo ? daysBetween(parseDate(c.ultimo), new Date()) : null; return gg == null || gg > 10 || (c.residuo != null && c.residuo <= 1); });
   const manRisk = cliList().filter(c => !c.archiviato && cliAlerts(c).some(a => a[0] === 'acc' || /Pacchetto|Ultima/.test(a[1])));
-  h += '<button type="button" class="card" data-a="go" data-r="clienti"><div class="row"><h2>Clienti</h2>' + ic('chev', 18) + '</div><span class="small muted">' + cl.length + ' nell\'app · ' + cliList().filter(c => !c.archiviato && !c.appUid).length + ' seguiti a mano</span>' + (risk.length + manRisk.length ? '<span class="small" style="color:var(--accent-deep);font-weight:600">' + (risk.length + manRisk.length) + ' da guardare: ' + esc(risk.map(c => c.nome || 'Cliente').concat(manRisk.map(cliNome)).slice(0, 4).join(', ')) + '</span>' : '') + '</button>';
+  h += '<button type="button" class="card" data-a="go" data-r="clienti"><div class="row"><h2>Clienti</h2>' + ic('chev', 18) + '</div><span class="small muted">' + cl.length + ' nell\'app · ' + cliList().filter(c => !c.archiviato && !c.appUid).length + ' seguiti a mano' + (() => { const lk = {}; cliList().forEach(c => { if (c.appUid) lk[c.appUid] = 1; }); const n = cl.filter(c => !lk[c._id]).length; return n ? ' · <b style="color:var(--accent-deep)">' + n + ' da abbinare</b>' : ''; })() + '</span>' + (risk.length + manRisk.length ? '<span class="small" style="color:var(--accent-deep);font-weight:600">' + (risk.length + manRisk.length) + ' da guardare: ' + esc(risk.map(c => c.nome || 'Cliente').concat(manRisk.map(cliNome)).slice(0, 4).join(', ')) + '</span>' : '') + '</button>';
   return h + '</div>';
 };
 SCREENS.clienti = function(){
@@ -4669,6 +4728,7 @@ SCREENS.clienti = function(){
   const arch = cliList().filter(c => c.archiviato);
   let h = agendaHead('clienti');
   h += '<div class="grid2"><button type="button" class="btn pri" data-a="sheet" data-k="anamnesi">' + ic('plus', 18) + ' Nuovo cliente</button><button type="button" class="btn" data-a="sheet" data-k="invita">' + ic('users', 18) + ' Invita nell\'app</button></div>';
+  { const da = app.filter(c => !linked[c._id]); if (da.length) h += '<div class="card" style="border-color:var(--accent);gap:8px"><div class="row"><h2>Da abbinare</h2><span class="chip acc">' + da.length + '</span></div><span class="small muted" style="line-height:1.45">Si sono collegati con il tuo codice. Abbinali alla loro scheda: vedranno lezioni, pacchetto, sedute, scheda e misure che registri tu.</span><div class="list">' + da.map(c => { const p = abbinaProposte(c.nome)[0]; return '<div class="li"><span class="grow"><span class="title">' + esc(c.nome || 'Cliente') + '</span><span class="small muted">' + (p && p.s >= 2 ? 'È ' + esc(cliNome(p.c)) + ' dei tuoi clienti?' : 'Nessuna scheda con questo nome') + '</span></span>' + (p && p.s >= 2 ? '<button type="button" class="btn sm dark" data-a="sheet" data-k="abbina" data-id="' + esc(c._id) + '" data-n="' + esc(c.nome || '') + '">Sì, abbina</button>' : '<button type="button" class="btn sm" data-a="sheet" data-k="abbina" data-id="' + esc(c._id) + '" data-n="' + esc(c.nome || '') + '">Abbina</button>') + '</div>'; }).join('') + '</div></div>'; }
   if (man.length + app.length > 3) h += '<input id="cl-q" class="input" type="search" placeholder="Cerca un cliente" data-filter="cl" autocomplete="off" aria-label="Cerca un cliente">';
   if (man.length) { const wk = weekKey(new Date()); const lw = man.reduce((a, c) => a + (c.lezioni || []).filter(l => l.stato === 'fatta' && weekKey(parseDate(l.data)) === wk).length, 0); const ren = man.filter(c => { const p = cliPkg(c); return p.tot && p.left <= 1; }).length; const sw = man.reduce((a, c) => a + (c.sessioni || []).filter(s => weekKey(new Date(s.inizio)) === wk).length, 0);
     h += '<div class="hstat" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="card" style="padding:10px 12px;gap:2px"><span class="tiny muted">Clienti</span><b class="mono" style="font-size:20px">' + man.length + '</b></div><div class="card" style="padding:10px 12px;gap:2px"><span class="tiny muted">Lezioni settimana</span><b class="mono" style="font-size:20px">' + Math.max(lw, sw) + '</b></div><div class="card" style="padding:10px 12px;gap:2px' + (ren ? ';border-color:var(--accent)' : '') + '"><span class="tiny muted">Da rinnovare</span><b class="mono" style="font-size:20px' + (ren ? ';color:var(--accent-deep)' : '') + '">' + ren + '</b></div></div>'; }
@@ -4682,7 +4742,7 @@ SCREENS.clienti = function(){
   else h += '<div class="list">' + app.map(c => { const gg = c.ultimo ? daysBetween(parseDate(c.ultimo), new Date()) : null; const risk = gg == null || gg > 10 || (c.residuo != null && c.residuo <= 1); const why = []; if (gg == null) why.push('non ha ancora registrato allenamenti'); else if (gg > 10) why.push('non si allena da ' + gg + ' giorni'); else why.push('ultimo allenamento ' + (gg === 0 ? 'oggi' : gg === 1 ? 'ieri' : gg + ' giorni fa')); if (c.residuo != null) why.push(c.residuo + (c.residuo === 1 ? ' lezione rimasta' : ' lezioni rimaste'));
     const sch = linked[c._id];
     const shareN = c.condivide ? Object.keys(c.condivide).filter(k => c.condivide[k]).length : 0; if (c.condivide && !c.condivide.allenamento) { why.shift(); why.unshift('non condivide gli allenamenti'); }
-    return '<div class="li" data-name="' + esc(String(c.nome || '').toLowerCase()) + '"><span class="dot ' + (c.condivide && !c.condivide.allenamento ? '' : risk ? 'red' : 'green') + '"></span><button type="button" class="liwrap" data-a="sheet" data-k="appcli" data-id="' + esc(c._id) + '"><span class="grow"><span class="title">' + esc(c.nome || 'Cliente') + '</span><span class="small muted">' + esc(why.join(' · ')) + '</span><span class="tiny muted">LV ' + (c.livello || 1) + ' · ' + esc(c.titolo || '') + (c.condivide ? ' · condivide ' + shareN + ' di ' + CONDIVIDI.length + ' sezioni' : '') + '</span></span></button><button type="button" class="btn sm" data-a="cliapp" data-id="' + esc(c._id) + '" data-n="' + esc(c.nome || '') + '">' + (sch ? 'Scheda' : '+ Anamnesi') + '</button></div>'; }).join('') + '</div>';
+    return '<div class="li" data-name="' + esc(String(c.nome || '').toLowerCase()) + '"><span class="dot ' + (c.condivide && !c.condivide.allenamento ? '' : risk ? 'red' : 'green') + '"></span><button type="button" class="liwrap" data-a="sheet" data-k="appcli" data-id="' + esc(c._id) + '"><span class="grow"><span class="title">' + esc(c.nome || 'Cliente') + '</span><span class="small muted">' + esc(why.join(' · ')) + '</span><span class="tiny muted">LV ' + (c.livello || 1) + ' · ' + esc(c.titolo || '') + (c.condivide ? ' · condivide ' + shareN + ' di ' + CONDIVIDI.length + ' sezioni' : '') + '</span></span></button><button type="button" class="btn sm" data-a="cliapp" data-id="' + esc(c._id) + '" data-n="' + esc(c.nome || '') + '">' + (sch ? 'Scheda' : 'Abbina') + '</button></div>'; }).join('') + '</div>';
   h += '</div>';
   if (arch.length) h += '<div class="card"><h2>Archiviati</h2><div class="list">' + arch.map(c => '<div class="li"><button type="button" class="liwrap" data-a="go" data-r="clientept" data-id="' + c.id + '"><span class="grow"><span>' + esc(cliNome(c)) + '</span></span>' + ic('chev', 18) + '</button></div>').join('') + '</div></div>';
   return h + '</div>';
@@ -4697,6 +4757,8 @@ SCREENS.clientept = function(){
     + (pk.tot ? '<div class="pkg" style="grid-template-columns:repeat(' + Math.max(1, Math.min(pk.tot, 40)) + ',minmax(0,1fr))">' + Array.from({ length: Math.min(pk.tot, 40) }, (_, i) => '<span style="background:' + (i < pk.used ? 'var(--ink-fg)' : 'var(--ink-line)') + '"></span>').join('') + '</div>' : '')
     + '<span class="tiny" style="color:var(--ink-muted)">' + esc([last ? 'Ultima lezione ' + fmtD(parseDate(last)) : 'Nessuna lezione registrata', pk.scadenza ? 'pacchetto in scadenza il ' + fmtD(parseDate(pk.scadenza)) : '', c.giorni ? c.giorni + ' giorni a settimana' : ''].filter(Boolean).join(' · ')) + '</span></div>';
   cliAlerts(c).forEach(a => { h += '<span class="chip ' + a[0] + '" style="white-space:normal;line-height:1.4;padding:8px 10px">' + esc(a[1]) + '</span>'; });
+  if (c.appUid) { const sw = (k, t, sub) => '<button type="button" class="li liwrap" style="text-align:left" data-a="clcond" data-id="' + c.id + '" data-k="' + k + '" aria-pressed="' + !!c[k] + '"><span class="grow"><span class="title">' + t + '</span><span class="tiny muted">' + sub + '</span></span><span class="chip ' + (c[k] ? 'ok' : '') + '">' + (c[k] ? 'Condivise' : 'Private') + '</span></button>';
+    h += '<details class="card" style="gap:6px"><summary class="row" style="cursor:pointer;list-style:none"><span class="stack" style="gap:2px"><span style="font-weight:700">' + ic('users', 16) + ' Abbinato all\'app di ' + esc(c.nome || 'questo cliente') + '</span><span class="tiny muted">Vede lezioni, pacchetto, sedute, scheda attiva e misure. Si aggiorna da solo.</span></span>' + ic('chev', 16) + '</summary><div class="list">' + sw('condNote', 'Note', c.condNote ? 'Il cliente vede le tue note' : 'Solo tu le vedi') + sw('condAnam', 'Anamnesi e questionario di salute', c.condAnam ? 'Il cliente vede l\'anamnesi' : 'Solo tu la vedi') + '</div><button type="button" class="btn sm ghost" data-a="clscollega" data-id="' + c.id + '">Scollega dall\'app</button></details>'; }
   { const nx = cliNext(c); h += '<div class="grid3"><button type="button" class="btn pri" data-a="' + (nx ? 'clstart' : 'clallena') + '" data-cid="' + c.id + '"' + (nx ? ' data-id="' + nx.g.id + '"' : '') + '>' + ic('dumbbell', 18) + ' Allena</button><button type="button" class="btn" data-a="sheet" data-k="lezione" data-cid="' + c.id + '">' + ic('plus', 16) + ' Lezione</button><button type="button" class="btn" data-a="sheet" data-k="misuracl" data-cid="' + c.id + '">' + ic('plus', 16) + ' Misura</button></div>'; }
   h += '<div class="seg" role="tablist">' + [['allenamenti','Allenamenti'],['anamnesi','Anamnesi'],['lezioni','Lezioni'],['misure','Misure'],['note','Note']].map(t => '<button type="button" role="tab" style="font-size:12px;padding:0 2px" aria-selected="' + (tab === t[0]) + '" data-a="ctab" data-v="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
   if (tab === 'allenamenti') h += clTabAllenamenti(c);
@@ -5222,6 +5284,13 @@ function renderSheet(){
         + (d.err ? '<div class="chip acc" style="white-space:normal;line-height:1.4">' + esc(d.err) + '</div>' : '')
         + (aiReady() ? '<div class="grid2">' + close + '<button type="button" class="btn pri" data-a="pianogo">Leggi il piano</button></div>' : '<span class="small muted">Serve l\'AI per leggere il piano: qui non è disponibile. Inserisci gli obiettivi a mano.</span>' + close); }
     case 'appcli': return sheetAppCli(d);
+    case 'dalpt': return sheetDalpt();
+    case 'abbina': { const a = (SH.clienti || []).find(x => x._id === d.id); const n = (a && a.nome) || d.n || 'Il cliente'; const pr = abbinaProposte(n); const altri = cliList().filter(c => !c.appUid && !c.archiviato && !pr.some(p => p.c.id === c.id)).sort((x, y) => cliNome(x).localeCompare(cliNome(y)));
+      const row = (c, best) => '<button type="button" class="li liwrap" style="text-align:left" data-a="abbina" data-id="' + esc(d.id) + '" data-cid="' + c.id + '"><span class="grow"><span class="title">' + esc(cliNome(c)) + (best ? ' <span class="chip ok" style="font-size:10px;padding:2px 6px">stesso nome</span>' : '') + '</span><span class="small muted">' + esc((() => { const pk = cliPkg(c); return [pk.tot ? pk.used + ' lezioni fatte su ' + pk.tot : 'nessun pacchetto', (c.sessioni || []).length + ' sedute registrate'].join(' · '); })()) + '</span></span>' + ic('chev', 16) + '</button>';
+      return '<span class="eyebrow">Abbina il cliente</span><h2>' + esc(n) + ' ha inserito il tuo codice</h2><span class="small muted" style="line-height:1.5">Scegli la sua scheda tra i tuoi clienti. Da quel momento vedrà nella sua app le lezioni fatte e rimaste, il pacchetto, le sedute che registri con lui, la scheda attiva e le misure. Note e anamnesi restano private: puoi condividerle dalla sua scheda.</span>'
+        + (pr.length ? '<span class="flabel">Corrispondono per nome</span><div class="list">' + pr.map(p => row(p.c, p.s >= 2)).join('') + '</div>' : '<span class="small muted">Nessuno dei tuoi clienti ha questo nome.</span>')
+        + (altri.length ? '<details><summary class="small" style="cursor:pointer;padding:6px 0">Altri clienti (' + altri.length + ')</summary><div class="list">' + altri.map(c => row(c, false)).join('') + '</div></details>' : '')
+        + '<button type="button" class="btn out wide" data-a="abbina" data-id="' + esc(d.id) + '" data-n="' + esc(n) + '">' + ic('plus', 18) + ' Non c\'è: crea una nuova scheda cliente</button>' + close; }
     case 'integr': return sheetIntegr(d);
     case 'integdose': return sheetIntegDose(d);
     case 'dati': { const dd = Object.assign({}, S.dati || {}, d.draft || {}); const pe = latestPesoEntry(); const sx = dd.sesso || ''; const pesoV = d.draft && d.draft.peso != null ? d.draft.peso : (pe ? numIn(pe.peso) : '');
@@ -5390,6 +5459,9 @@ const AI = {
     if (!giorni.length) { d.err = (d.err ? d.err + ' ' : '') + 'Non ho riconosciuto esercizi. Scrivili una riga per esercizio, così: "Squat 4x6 rec 90".'; render(); return; }
     d.preview = { nome: FILES.import ? FILES.import.name.replace(/\.[^.]+$/, '').slice(0, 60) : 'La mia scheda', riscaldamento: giorni.riscaldamento || '', giorni: giorni.slice(), prossimo: 0 }; d.via = 'locale'; render();
   },
+  usaschedapt(){ const D = dalpt(); if (!D || !D.scheda) return; const nm = (D.scheda.nome || 'Scheda') + ' (dal PT)'; const ex = S.schede.find(x => x.dalpt);
+    const x = { nome: nm.slice(0, 40), dalpt: 1, riscaldamento: '', prossimo: 0, giorni: (D.scheda.giorni || []).map(g => ({ id: rid(), nome: g.nome, esercizi: (g.esercizi || []).map(e => ({ id: rid(), nome: e.nome, tipo: e.tipo || 'pesi', unita: e.unita || '', serie: +e.serie || 3, rip: e.rip || 10, rec: +e.rec || 90, nota: e.nota || '' })) })) };
+    if (ex) { x.id = ex.id; x.disc = ex.disc; setSchedaCorrente(x); } else addScheda(x); save(); UI.sheet = null; toast(ex ? 'Scheda del PT aggiornata' : 'Scheda del PT pronta in Allenati'); go('allenati'); },
   importuse(ds){ const d = sheetD(); if (!d.preview) return; const x = Object.assign({ prossimo: 0 }, d.preview, { esempio: false }); if ((ds && ds.m === 'add') || d.add) { if (d.add && d.nome) x.nome = d.nome; if (d.disc) x.disc = d.disc; addScheda(x); } else { x.id = S.scheda.id; x.disc = S.scheda.disc; setSchedaCorrente(x); } save(); FILES.import = null; UI.sheet = null; toast('Scheda caricata: ' + x.giorni.length + ' giorni'); go('allenati'); },
   importback(){ const d = sheetD(); d.preview = null; d.err = ''; render(); },
   async pastoai(){
@@ -5526,7 +5598,7 @@ const A = {
     else if (w === 'delfisso') ask('Eliminare il corso fisso?', 'Le sue lezioni non verranno più contate.', 'Elimina', () => { S.corsiFissi = S.corsiFissi.filter(c => c.id !== ds.id); save(); });
     else if (w === 'delsost') ask('Eliminare la sostituzione?', 'Se era già stata inviata, il manager la vede ancora: avvisalo.', 'Elimina', () => { S.sostituzioni = S.sostituzioni.filter(c => c.id !== ds.id); save(); });
     else if (w === 'delgoal') ask('Eliminare l\'obiettivo?', 'Spariscono anche le registrazioni e gli XP che ti ha dato. Se vuoi solo metterlo da parte, archivialo.', 'Elimina', () => { S.obiettivi = S.obiettivi.filter(o => o.id !== ds.id); Object.keys(OBLOG).forEach(mk => { const l = OBLOG[mk].log || []; const n2 = l.filter(x => x.ob !== ds.id); if (n2.length !== l.length) { OBLOG[mk].log = n2; saveOblog(mk); } }); if (S.timer && S.timer.ob === ds.id) S.timer = null; save(); });
-    else if (w === 'delcli') ask('Eliminare il cliente?', 'Anamnesi, lezioni, misure e note di questo cliente verranno cancellate per sempre.', 'Elimina', async () => { delete CLI[ds.id]; await Store.delPrivate('cl-' + ds.id); UI.route = 'clienti'; await loadFor('clienti'); });
+    else if (w === 'delcli') ask('Eliminare il cliente?', 'Anamnesi, lezioni, misure e note di questo cliente verranno cancellate per sempre.', 'Elimina', async () => { const u = CLI[ds.id] && CLI[ds.id].appUid; clearTimeout(PUB_T[ds.id]); delete CLI[ds.id]; await Store.delPrivate('cl-' + ds.id); if (u && Store.db) { try { await Store.db.doc('dalpt/' + u).delete(); } catch(e) {} } UI.route = 'clienti'; await loadFor('clienti'); });
     else if (w === 'delinteg') ask('Eliminare l\'integratore?', 'Sparisce dalla lista dei salvati. Le dosi già segnate nei giorni passati restano nel conteggio.', 'Elimina', () => { S.nutri.integratori = S.nutri.integratori.filter(i => i.id !== ds.id); save(); });
     else if (w === 'delpiano') ask('Rimuovere il piano?', 'Gli obiettivi giornalieri restano finché non li cambi.', 'Rimuovi', () => { S.nutri.piano = null; save(); });
     else if (w === 'unlink') ask('Cambiare o scollegare il PT?', 'Ti scolleghi da ' + S.profilo.ptNome + ': non vedrà più i tuoi dati. Puoi inserire un nuovo codice oppure continuare da solo. I tuoi dati restano.', 'Scollegati', () => { if (Store.db && S.profilo.ptId) Store.db.doc('condivisi/' + Store.uid).delete().catch(() => {}); S.profilo.onboarded = false; S.profilo.ptId = ''; S.profilo.ptCode = ''; S.profilo.offline = false; UI.login.mode = 'cliente'; UI.login.pt = 'no'; save(); });
@@ -5685,9 +5757,18 @@ const A = {
   dellez(ds){ const c = CLI[ds.cid]; if (!c) return; c.lezioni = (c.lezioni || []).filter(x => x.id !== ds.lid); saveCli(c); UI.sheet = null; render(); },
   delmis(ds){ const c = CLI[ds.cid]; if (!c) return; c.misure = (c.misure || []).filter(x => x.id !== ds.id); saveCli(c); render(); },
   delnota(ds){ const c = CLI[ds.cid]; if (!c) return; c.noteLog = (c.noteLog || []).filter(x => x.id !== ds.id); saveCli(c); render(); },
-  cliarch(ds){ const c = CLI[ds.id]; if (!c) return; c.archiviato = !c.archiviato; saveCli(c); toast(c.archiviato ? 'Cliente archiviato' : 'Cliente riattivato'); render(); },
+  cliarch(ds){ const c = CLI[ds.id]; if (!c) return; c.archiviato = !c.archiviato; saveCli(c); if (c.archiviato && c.appUid && Store.db) Store.db.doc('dalpt/' + c.appUid).delete().catch(() => {}); toast(c.archiviato ? 'Cliente archiviato' : 'Cliente riattivato'); render(); },
   copyanam(ds){ const c = CLI[ds.id]; if (!c) return; UI.sheet = { k: 'testo', d: { title: 'Riepilogo per la scheda', sub: 'Tutto quello che serve per preparare la scheda di ' + cliNome(c) + '. Copialo dove ti serve, anche in una chat con Claude.', text: anamText(c) } }; render(); },
-  cliapp(ds){ let c = cliList().find(x => x.appUid === ds.id); if (!c) { c = { id: rid(), appUid: ds.id, nome: ds.n || 'Cliente', creato: Date.now(), lezioni: [], misure: [], noteLog: [] }; saveCli(c); } UI.ctab = 'anamnesi'; go('clientept', { id: c.id }); },
+  cliapp(ds){ const c = cliList().find(x => x.appUid === ds.id); if (c) { UI.ctab = 'allenamenti'; go('clientept', { id: c.id }); return; } UI.sheet = { k: 'abbina', d: { id: ds.id, n: ds.n } }; render(); },
+  abbina(ds){
+    if (cliList().some(x => x.appUid === ds.id)) { toast('Questo cliente è già abbinato'); return; }
+    let c = ds.cid ? CLI[ds.cid] : null; const nuovo = !c;
+    if (!c) { const p = String(ds.n || 'Cliente').trim().split(/\s+/); c = { id: rid(), nome: p[0] || 'Cliente', cognome: p.slice(1).join(' '), creato: Date.now(), lezioni: [], misure: [], noteLog: [] }; }
+    c.appUid = ds.id; saveCli(c); pubCli(c); UI.sheet = null; UI.ctab = nuovo ? 'anamnesi' : 'allenamenti';
+    toast('Abbinato: ' + cliNome(c) + ' ora vede i suoi dati nell\'app'); go('clientept', { id: c.id });
+  },
+  clcond(ds){ const c = CLI[ds.id]; if (!c || !c.appUid) return; c[ds.k] = !c[ds.k]; saveCli(c); toast((ds.k === 'condNote' ? 'Note' : 'Anamnesi') + (c[ds.k] ? ' condivise con ' : ' di nuovo private per ') + (c.nome || 'il cliente')); render(); },
+  clscollega(ds){ const c = CLI[ds.id]; if (!c || !c.appUid) return; ask('Scollegare la scheda dall\'app?', cliNome(c) + ' non vedrà più lezioni, sedute, scheda e misure che registri tu. La scheda resta tua con tutti i dati, e puoi abbinarla di nuovo quando vuoi.', 'Scollega', async () => { const u = c.appUid; c.appUid = ''; clearTimeout(PUB_T[c.id]); saveCli(c); if (Store.db) { try { await Store.db.doc('dalpt/' + u).delete(); } catch(e) {} } toast('Scollegato'); render(); }); },
   integquick(ds){ const x = S.nutri.integratori.find(i => i.id === ds.id); if (!x) return; if (integEntry(UI.nday, x.id)) { setInteg(UI.nday, x, 0); toast('Tolto dal conteggio'); } else { setInteg(UI.nday, x, x.dose || x.porzione || 1); toast(x.nome + ': ' + qtyLab(x.dose || x.porzione || 1, x.forma)); } UI.tips = null; render(); },
   integoff(ds){ const x = S.nutri.integratori.find(i => i.id === ds.id); if (!x) return; setInteg(UI.nday, x, 0); UI.sheet = null; UI.tips = null; toast('Tolto dal conteggio'); render(); },
   integall(){ let n = 0; S.nutri.integratori.forEach(x => { if (!integEntry(UI.nday, x.id)) { setInteg(UI.nday, x, x.dose || x.porzione || 1); n++; } }); UI.tips = null; toast(n + (n === 1 ? ' integratore segnato' : ' integratori segnati')); render(); },
@@ -5808,6 +5889,7 @@ const A = {
   effetti(){ return effettiGo(); },
   guidaab(ds){ const G = S.guida; const a = G && (G.abitudini || [])[+ds.i]; if (!a) return; if ((S.obiettivi || []).some(o => !o.archiviato && o.nome.toLowerCase() === a.nome.toLowerCase())) return; S.obiettivi.push({ id: rid(), nome: a.nome, area: a.area || 'altro', tipo: 'abitudine', qta: +a.qta || 1, unita: a.unita || 'volte', freq: clamp(+a.freq || 7, 1, 7), quando: a.quando || 'libero', scadenza: '', nota: 'Dalla tua guida', creato: isoDate(new Date()) }); save(); toast('Aggiunta ai tuoi obiettivi: ' + a.nome); render(); },
   pastoai(){ return AI.pastoai(); }, pastoadd(){ return AI.pastoadd(); }, pastoback(){ return AI.pastoback(); },
+  usaschedapt(){ return AI.usaschedapt(); },
   aitips(){ return AI.aitips(); }, aicheck(){ return AI.aicheck(); }, pianogo(){ return AI.pianogo(); }, labelai(){ return AI.labelai(); }
 };
 
@@ -5829,6 +5911,7 @@ const FORMS = {
     }
     if (!code) { UI.err = 'Inserisci il codice del tuo PT (per provare: ' + DEMO_CODE + ').'; render(); return; }
     if (!nome) { UI.err = 'Scrivi il tuo nome.'; render(); return; }
+    if (nome.split(/\s+/).length < 2) { UI.err = 'Scrivi nome e cognome, così il tuo PT ti riconosce.'; render(); return; }
     if (!fd.get('consenso')) { UI.err = 'Per continuare serve il consenso al salvataggio dei dati.'; render(); return; }
     if (!/^[A-Z0-9-]{4,20}$/.test(code)) { UI.err = 'Il codice contiene caratteri non validi: usa lettere, numeri e trattino.'; render(); return; }
     let ptId = '', ptNome = '';
