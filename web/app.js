@@ -213,7 +213,12 @@ window.addEventListener('pagehide', flushSave);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
 function saveSess(mk){ Store.savePrivate('sess-' + mk, SESS[mk] || { sessioni: [] }); pushSoon(); }
 function saveFood(mk){ Store.savePrivate('cibo-' + mk, FOOD[mk] || { giorni: {} }); pushSoon(); }
-function sessions(){ if (CLX) return ((CLI[CLX] || {}).sessioni || []).slice().sort((a, b) => a.inizio - b.inizio); return Object.keys(SESS).reduce((a, k) => a.concat(SESS[k].sessioni || []), []).sort((a, b) => a.inizio - b.inizio); }
+function sessions(){ if (CLX) return ((CLI[CLX] || {}).sessioni || []).slice().sort((a, b) => a.inizio - b.inizio); return Object.keys(SESS).reduce((a, k) => a.concat(SESS[k].sessioni || []), []).concat(ptSessions()).sort((a, b) => a.inizio - b.inizio); }
+/* sedute registrate dal PT per questo cliente: entrano nello storico, nei progressi e nei pesi suggeriti come le sue */
+let PTSESS = null;
+function ptSessions(){ if (!S || S.profilo.ruolo !== 'cliente') return []; const D = typeof dalpt === 'function' ? dalpt() : null; if (!D) return []; if (PTSESS && PTSESS.k === D.aggiornato) return PTSESS.v;
+  const v = (D.sedute || []).map(x => ({ id: 'pt-' + (x.id || x.inizio), pt: 1, inizio: +x.inizio, giorno: x.giorno || 'Seduta con il PT', durMin: +x.min || 0, esercizi: (x.esercizi || []).map(e => ({ nome: e.nome, tipo: e.tipo || 'pesi', unita: e.unita || '', serie: (e.serie || []).map(st => ({ kg: st.kg, rip: st.rip, ok: true })) })) })).filter(x => x.inizio);
+  PTSESS = { k: D.aggiornato, v }; return v; }
 function g3(m, f, n){ const g = S && S.profilo.genere; return g === 'f' ? f : g === 'n' ? n : m; }
 
 /* ---------- calcoli allenamento ---------- */
@@ -389,7 +394,36 @@ function pkgInfo(){
 async function loadBookings(){
   const pt = S.profilo.ptId || 'demo';
   const res = await Promise.all([Store.query('prenotazioni', 'pt', pt), S.profilo.ptId ? Store.get('staff/' + S.profilo.ptId) : Promise.resolve(null), S.profilo.ptId && Store.db && Store.uid ? Store.get('dalpt/' + Store.uid) : Promise.resolve(null)]);
-  SH.pren = res[0]; SH.ptDoc = res[1]; SH.dalpt = res[2] && res[2].pt === S.profilo.ptId ? res[2] : null;
+  SH.pren = res[0]; SH.ptDoc = res[1]; if (S.profilo.ptId && Store.db) setDalpt(res[2]);
+}
+function dalptKey(){ return 'dc_dalpt_' + Store.uid; }
+function setDalpt(doc){
+  const ok = doc && doc.pt === S.profilo.ptId ? doc : null; const prev = SH.dalpt;
+  SH.dalpt = ok; PTSESS = null; if (ok) LS.set(dalptKey(), ok); else LS.del(dalptKey());
+  if (ok) { syncSchedaPT(ok); ptProssimo(ok); save(); } return !prev || !ok || prev.aggiornato !== ok.aggiornato;
+}
+/* all'avvio: subito la copia salvata sul telefono, poi quella aggiornata dal server */
+async function loadDalpt(){
+  if (!S || S.profilo.ruolo !== 'cliente' || !S.profilo.ptId) { SH.dalpt = null; return; }
+  if (!SH.dalpt) { const c = LS.get(dalptKey()); if (c && c.pt === S.profilo.ptId) { SH.dalpt = c; PTSESS = null; syncSchedaPT(c); ptProssimo(c); } }
+  if (!Store.db || !Store.uid) return;
+  try { const d = await Store.get('dalpt/' + Store.uid); if (setDalpt(d) && S) render(); } catch(e) {}
+}
+/* la scheda attiva che il PT ha preparato per il cliente diventa una sua scheda in Allenati e resta allineata */
+function syncSchedaPT(D){
+  if (!D || !D.scheda || !(D.scheda.giorni || []).length) return;
+  const sig = JSON.stringify(D.scheda); let x = S.schede.find(y => y.dalpt);
+  if (x && x.dalptSig === sig) return;
+  const giorni = D.scheda.giorni.map(g => ({ id: 'pt' + (g.id || rid()), nome: g.nome, esercizi: (g.esercizi || []).map(e => ({ id: 'pt' + (e.id || rid()), nome: e.nome, tipo: e.tipo || 'pesi', unita: e.unita || 'rip', serie: +e.serie || 3, rip: e.rip || 10, rec: +e.rec || 90, nota: e.nota || '' })) }));
+  const nome = ((D.scheda.nome || 'Scheda') + ' · dal PT').slice(0, 48);
+  if (x) { Object.assign(x, { nome, giorni, riscaldamento: D.scheda.riscaldamento || x.riscaldamento || '', dalptSig: sig }); if (x.prossimo >= giorni.length) x.prossimo = 0; if (S.schedaId === x.id) S.scheda = x; save(); toast('Il tuo PT ha aggiornato la scheda'); return; }
+  x = { nome, dalpt: 1, dalptSig: sig, riscaldamento: D.scheda.riscaldamento || '', giorni, prossimo: 0 }; addScheda(x); ptProssimo(D, x); save();
+}
+/* dopo una seduta fatta con il PT il prossimo giorno della scheda è quello successivo */
+function ptProssimo(D, x){
+  x = x || S.schede.find(y => y.dalpt); if (!x || !D) return; const last = (D.sedute || []).slice().sort((a, b) => b.inizio - a.inizio)[0]; if (!last || +last.inizio <= (+x.ptLastT || 0)) return;
+  const own = Object.keys(SESS).reduce((a, k) => a.concat(SESS[k].sessioni || []), []).reduce((m, z) => Math.max(m, z.inizio || 0), 0); x.ptLastT = +last.inizio; if (own > +last.inizio) return;
+  const i = x.giorni.findIndex(g => g.nome === last.giorno); if (i >= 0) x.prossimo = (i + 1) % x.giorni.length;
 }
 /* il PT ha abbinato questo account alla sua scheda cliente: lezioni, pacchetto, sedute, scheda e misure registrate da lui */
 function dalpt(){ return ptLinked() && SH.dalpt ? SH.dalpt : null; }
@@ -409,7 +443,7 @@ function sheetDalpt(){
   h += '<div class="card"><span class="eyebrow">Pacchetto</span>' + (P.tot ? '<span class="small"><strong>' + P.used + '</strong> lezioni fatte su ' + P.tot + (P.inizio ? ' dal ' + esc(fmtD(parseDate(P.inizio))) : '') + ' · <strong>' + P.left + '</strong> rimaste' + (P.scadenza ? ' · valido fino al ' + esc(fmtD(parseDate(P.scadenza))) : '') + '</span>' : '<span class="small muted">Nessun pacchetto registrato.</span>') + '</div>';
   const L = D.lezioni || []; h += '<div class="card"><span class="eyebrow">Lezioni</span>' + (L.length ? '<div class="list">' + L.slice(0, 30).map(l => '<div class="li"><span class="mono" style="font-weight:600;width:76px;flex:0 0 auto;font-size:13px">' + esc(fmtD(parseDate(l.data))) + '<br>' + esc(l.ora || '') + '</span><span class="grow"><span class="small">' + esc(l.nota || (l.durata || 60) + ' min') + '</span></span><span class="chip ' + ((st[l.stato] || [])[0] || '') + '">' + esc((st[l.stato] || [])[1] || l.stato) + '</span></div>').join('') + '</div>' : '<span class="small muted">Ancora nessuna lezione.</span>') + '</div>';
   const SD = D.sedute || []; h += '<div class="card"><span class="eyebrow">Sedute con il PT</span>' + (SD.length ? SD.map(s => '<details style="padding:4px 0;border-top:1px solid var(--line)"><summary class="row" style="cursor:pointer;list-style:none"><span class="stack" style="gap:2px"><span style="font-weight:600">' + esc(s.giorno || 'Seduta') + '</span><span class="tiny muted">' + esc(fmtD(s.inizio)) + (s.min ? ' · ' + fmtMin(s.min) : '') + ' · ' + (s.esercizi || []).length + ' esercizi</span></span>' + ic('chev', 14) + '</summary><div class="stack" style="gap:4px;padding-top:6px">' + (s.esercizi || []).map(e => '<div class="row"><span class="small">' + esc(e.nome) + '</span><span class="mono tiny muted" style="text-align:right">' + esc((e.serie || []).map(x => (x.kg ? x.kg + '×' : '') + (x.rip || '–') + (e.unita === 'sec' ? 's' : e.unita === 'min' ? '′' : '')).join('  ')) + '</span></div>').join('') + '</div></details>').join('') : '<span class="small muted">Il tuo PT non ha ancora registrato sedute con te.</span>') + '</div>';
-  const SC = D.scheda; if (SC) h += '<div class="card"><div class="row"><span class="eyebrow">Scheda attiva · ' + esc(SC.nome) + '</span></div>' + (SC.giorni || []).map(g => '<div class="stack" style="gap:4px;padding-top:6px"><span style="font-weight:700">' + esc(g.nome) + '</span>' + (g.esercizi || []).map(e => '<div class="row"><span class="stack" style="gap:0"><span class="small">' + esc(e.nome) + '</span>' + (e.nota ? '<span class="tiny muted">' + esc(e.nota) + '</span>' : '') + '</span><span class="mono small">' + esc(e.serie + '×' + e.rip + (e.unita === 'sec' ? 's' : e.unita === 'min' ? '′' : '') + (e.rec ? ' · ' + e.rec + 's' : '')) + '</span></div>').join('') + '</div>').join('') + '<button type="button" class="btn out" data-a="usaschedapt">' + ic('dumbbell', 16) + ' Usala per allenarti da solo</button></div>';
+  const SC = D.scheda; if (SC) h += '<div class="card"><div class="row"><span class="eyebrow">Scheda attiva · ' + esc(SC.nome) + '</span></div>' + (SC.giorni || []).map(g => '<div class="stack" style="gap:4px;padding-top:6px"><span style="font-weight:700">' + esc(g.nome) + '</span>' + (g.esercizi || []).map(e => '<div class="row"><span class="stack" style="gap:0"><span class="small">' + esc(e.nome) + '</span>' + (e.nota ? '<span class="tiny muted">' + esc(e.nota) + '</span>' : '') + '</span><span class="mono small">' + esc(e.serie + '×' + e.rip + (e.unita === 'sec' ? 's' : e.unita === 'min' ? '′' : '') + (e.rec ? ' · ' + e.rec + 's' : '')) + '</span></div>').join('') + '</div>').join('') + '<button type="button" class="btn out" data-a="usaschedapt">' + ic('dumbbell', 16) + ' Apri in Allenati</button></div>';
   const M = D.misure || []; if (M.length) h += '<div class="card"><span class="eyebrow">Misure</span>' + (M.filter(m => m.peso).length > 1 ? lineChart(M.filter(m => m.peso).map(m => ({ x: fmtD(parseDate(m.data)), y: +m.peso })), 'kg') : '') + '<div class="list">' + M.slice().reverse().map(m => '<div class="li"><span class="grow"><span class="title">' + esc(fmtD(parseDate(m.data))) + '</span><span class="small muted mono">' + esc([m.peso ? fmtN(m.peso) + ' kg' : '', m.grasso ? 'grasso ' + fmtN(m.grasso) + '%' : '', m.magra ? 'magra ' + fmtN(m.magra) + ' kg' : '', m.vita ? 'vita ' + fmtN(m.vita, 0) + ' cm' : ''].filter(Boolean).join(' · ')) + '</span></span></div>').join('') + '</div></div>';
   if (D.note && D.note.length) h += '<div class="card"><span class="eyebrow">Note del PT</span><div class="list">' + D.note.slice().reverse().map(n => '<div class="li"><span class="grow"><span class="tiny muted">' + esc(fmtD(parseDate(n.data))) + '</span><span class="small" style="white-space:pre-wrap;line-height:1.45">' + esc(n.testo) + '</span></span></div>').join('') + '</div></div>';
   if (D.anamnesi) h += '<div class="card"><span class="eyebrow">La tua anamnesi</span>' + (D.anamnesi.sezioni || []).map(s => '<div class="stack" style="gap:6px;padding-top:6px"><span class="tiny muted" style="font-weight:700">' + esc(s.s) + '</span><dl class="kv">' + (s.rows || []).map(r => '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>').join('') + '</dl></div>').join('') + '</div>';
@@ -721,8 +755,8 @@ function dalptDoc(c){
   const doc = { pt: Store.uid, cliente: c.appUid, nome: cliNome(c), ptNome: (SH.me && SH.me.nome) || S.profilo.nome || 'Il tuo PT', aggiornato: Date.now(),
     pacchetto: { tot: pk.tot, used: pk.used, left: pk.left, inizio: p.inizio || '', scadenza: pk.scadenza || '' },
     lezioni: (c.lezioni || []).slice().sort((a, b) => (a.data + (a.ora || '')) < (b.data + (b.ora || '')) ? 1 : -1).slice(0, 60).map(l => ({ data: l.data, ora: l.ora || '', durata: l.durata || 60, stato: l.stato, nota: String(l.nota || '').slice(0, 200) })),
-    sedute: (c.sessioni || []).slice().sort((a, b) => b.inizio - a.inizio).slice(0, 20).map(s => ({ inizio: s.inizio, giorno: s.giorno || '', min: s.durMin || 0, esercizi: (s.esercizi || []).map(e => ({ nome: e.nome, unita: e.unita || '', serie: (e.serie || []).filter(x => x.ok !== false || x.rip).map(x => ({ kg: x.kg || '', rip: x.rip || '' })) })) })),
-    scheda: sc ? { nome: sc.nome || 'Scheda', giorni: (sc.giorni || []).map(g => ({ nome: g.nome, esercizi: (g.esercizi || []).map(e => ({ nome: e.nome, tipo: e.tipo, unita: e.unita || '', serie: e.serie, rip: e.rip, rec: e.rec, nota: e.nota || '' })) })) } : null,
+    sedute: (c.sessioni || []).slice().sort((a, b) => b.inizio - a.inizio).slice(0, 80).map(s => ({ id: s.id || String(s.inizio), inizio: s.inizio, giorno: s.giorno || '', min: s.durMin || 0, esercizi: (s.esercizi || []).map(e => ({ nome: e.nome, tipo: e.tipo || 'pesi', unita: e.unita || '', serie: (e.serie || []).filter(x => x.ok !== false || x.rip).map(x => ({ kg: x.kg || '', rip: x.rip || '' })) })) })),
+    scheda: sc ? { id: sc.id, nome: sc.nome || 'Scheda', riscaldamento: sc.riscaldamento || '', giorni: (sc.giorni || []).map(g => ({ id: g.id, nome: g.nome, esercizi: (g.esercizi || []).map(e => ({ id: e.id, nome: e.nome, tipo: e.tipo, unita: e.unita || '', serie: e.serie, rip: e.rip, rec: e.rec, nota: e.nota || '' })) })) } : null,
     misure: (c.misure || []).slice().sort((a, b) => a.data < b.data ? -1 : 1).map(m => ({ data: m.data, peso: m.peso || null, grasso: m.grasso || null, magra: m.magra || null, vita: m.vita || null })),
     note: c.condNote ? (c.noteLog || []).slice(-40).map(n => ({ data: n.data, testo: n.testo })) : null,
     anamnesi: c.condAnam ? { sezioni: anamSections(c).map(s => ({ s: s.s, rows: s.rows })), parq: parqState(c) } : null };
@@ -1859,8 +1893,8 @@ async function pushSummary(){
   const doc = { nome: S.profilo.nome, pt: S.profilo.ptId, livello: t.lv.L, titolo: t.text, residuo: pk ? pk.left : null, aggiornato: Date.now(), condivide: C };
   if (C.allenamento) {
     const days = Object.keys(trainingDays()).sort(); doc.ultimo = days[days.length - 1] || null;
-    doc.sedute30 = sessions().filter(s => s.inizio > Date.now() - 30 * DAY).length + S.attivita.filter(a => parseDate(a.data).getTime() > Date.now() - 30 * DAY).length;
-    doc.sedute = sessions().slice(-6).reverse().map(s => ({ data: isoDate(s.inizio), giorno: s.giorno, serie: (s.esercizi || []).reduce((a, e) => a + (e.serie || []).length, 0), min: s.durMin || 0 }));
+    doc.sedute30 = sessions().filter(s => !s.pt && s.inizio > Date.now() - 30 * DAY).length + S.attivita.filter(a => parseDate(a.data).getTime() > Date.now() - 30 * DAY).length;
+    doc.sedute = sessions().filter(s => !s.pt).slice(-6).reverse().map(s => ({ data: isoDate(s.inizio), giorno: s.giorno, serie: (s.esercizi || []).reduce((a, e) => a + (e.serie || []).length, 0), min: s.durMin || 0 }));
     doc.attivita = S.attivita.slice().sort((a, b) => a.data < b.data ? 1 : -1).slice(0, 5).map(a => ({ data: a.data, tipo: attLabel(a.sotto), min: a.min || 0 }));
   }
   if (C.alimentazione) { const day = ds => { const x = sumItems(foodFor(ds)); return { kcal: Math.round(x.kcal), p: Math.round(x.proteine), c: Math.round(x.carboidrati), g: Math.round(x.grassi), voci: foodFor(ds).filter(i => i.fonte !== 'integratore').length }; }; doc.alimentazione = { oggi: day(today), ieri: day(addDays(today, -1)), target: S.nutri.target || null }; }
@@ -1970,7 +2004,7 @@ SCREENS.allenati = function(){
   h += '<div class="card"><h2>Storico</h2>';
   if (!hist.length) h += '<div class="empty">Qui comparirà ogni allenamento che completi, con durata, serie, volume e record.</div>';
   else h += '<div class="list">' + hist.map(x => { if (x.kind === 's') { const s = x.s; const ser = s.esercizi.reduce((a, e) => a + e.serie.length, 0); const v = s.esercizi.reduce((a, e) => a + (e.tipo === 'cardio' ? 0 : e.serie.reduce((b, st) => b + (+st.kg || 0) * (+st.rip || 0), 0)), 0);
-      return '<div class="li"><button type="button" class="liwrap" data-a="sheet" data-k="sessdetail" data-id="' + s.id + '">' + dbox(s.inizio) + '<span class="grow"><span class="title">' + esc(s.giorno) + (prSess[s.id] ? ' <span class="chip acc">' + ic('star', 12) + ' ' + prSess[s.id] + ' record</span>' : '') + '</span><span class="small muted">' + fmtMin(s.durMin) + ' · ' + ser + ' serie' + (v ? ' · ' + fmtK(v) + ' kg' : '') + '</span></span>' + ic('chev', 18) + '</button></div>'; }
+      return '<div class="li"><button type="button" class="liwrap" data-a="sheet" data-k="sessdetail" data-id="' + s.id + '">' + dbox(s.inizio) + '<span class="grow"><span class="title">' + esc(s.giorno) + (s.pt ? ' <span class="chip ok">con il PT</span>' : '') + (prSess[s.id] ? ' <span class="chip acc">' + ic('star', 12) + ' ' + prSess[s.id] + ' record</span>' : '') + '</span><span class="small muted">' + fmtMin(s.durMin) + ' · ' + ser + ' serie' + (v ? ' · ' + fmtK(v) + ' kg' : '') + '</span></span>' + ic('chev', 18) + '</button></div>'; }
       return '<div class="li"><button type="button" class="liwrap" data-a="sheet" data-k="attivita" data-id="' + x.a.id + '">' + dbox(x.t) + '<span class="grow"><span class="title">' + esc(exAttNome(x.a)) + (x.a.extra ? ' <span class="chip">extra</span>' : '') + '</span><span class="small muted">' + fmtMin(x.a.min) + (x.a.km ? ' · ' + fmtN(x.a.km, 2) + ' km' : '') + '</span></span></button><button type="button" class="btn sm" data-a="confirm" data-what="delatt" data-id="' + x.a.id + '" aria-label="Elimina attività">' + ic('x', 16) + '</button></div>'; }).join('') + '</div>';
   return h + '</div></div>';
 };
@@ -5215,7 +5249,7 @@ function renderSheet(){
         + '<div class="field"><label for="e-c">Recupero tra le serie (secondi)</label><input id="e-c" name="rec" class="input mono" inputmode="numeric" value="' + e.rec + '"></div><div class="field"><label for="e-x">Nota tecnica</label><input id="e-x" name="nota" class="input" value="' + esc(e.nota) + '" maxlength="160"></div>'
         + '<div class="grid2">' + (ei >= 0 ? '<button type="button" class="btn ghost" data-a="delex" data-gi="' + gi + '" data-ei="' + ei + '">Elimina</button>' : close) + '<button class="btn pri" type="submit">Salva</button></div></form>'; }
     case 'sessdetail': { const s = sessions().find(x => x.id === d.id); if (!s) return close;
-      return '<h2>' + esc(s.giorno) + '</h2><span class="small muted">' + esc(fmtD(s.inizio)) + ' · ' + fmtT(s.inizio) + ' · ' + fmtMin(s.durMin) + '</span><div class="list">' + s.esercizi.map(e => '<div class="li"><span class="grow"><span class="title">' + esc(e.nome) + '</span><span class="small muted mono">' + e.serie.map(st => e.tipo === 'cardio' ? st.kg + ' m / ' + st.rip + '′' : (st.kg ? fmtN(st.kg) + ' × ' : '') + st.rip).join('  ·  ') + '</span></span></div>').join('') + '</div><button type="button" class="btn pri" data-a="sessedit" data-id="' + s.id + '">' + ic('edit', 18) + ' Modifica pesi, ripetizioni ed esercizi</button><div class="grid2"><button type="button" class="btn ghost" data-a="delsess" data-id="' + s.id + '">Elimina allenamento</button><button type="button" class="btn dark" data-a="closesheet">Chiudi</button></div>'; }
+      return '<h2>' + esc(s.giorno) + '</h2><span class="small muted">' + esc(fmtD(s.inizio)) + ' · ' + fmtT(s.inizio) + ' · ' + fmtMin(s.durMin) + (s.pt ? ' · con ' + esc(S.profilo.ptNome || 'il tuo PT') : '') + '</span><div class="list">' + s.esercizi.map(e => '<div class="li"><span class="grow"><span class="title">' + esc(e.nome) + '</span><span class="small muted mono">' + e.serie.map(st => e.tipo === 'cardio' ? st.kg + ' m / ' + st.rip + '′' : (st.kg ? fmtN(st.kg) + ' × ' : '') + st.rip).join('  ·  ') + '</span></span></div>').join('') + '</div>' + (s.pt ? '<span class="tiny muted" style="line-height:1.4">Seduta registrata dal tuo PT: per correggerla chiedi a lui.</span><button type="button" class="btn dark" data-a="closesheet">Chiudi</button>' : '<button type="button" class="btn pri" data-a="sessedit" data-id="' + s.id + '">' + ic('edit', 18) + ' Modifica pesi, ripetizioni ed esercizi</button><div class="grid2"><button type="button" class="btn ghost" data-a="delsess" data-id="' + s.id + '">Elimina allenamento</button><button type="button" class="btn dark" data-a="closesheet">Chiudi</button></div>'); }
     case 'summary': { const x = d;
       return '<span class="eyebrow">Allenamento salvato</span><h2 style="font-size:24px">' + esc(x.sess.giorno) + '</h2><div class="grid3"><div class="stack"><span class="tiny muted">Durata</span><span class="big-num" style="font-size:18px">' + fmtMin(x.sess.durMin) + '</span></div><div class="stack"><span class="tiny muted">Serie</span><span class="big-num" style="font-size:18px">' + x.sess.esercizi.reduce((a, e) => a + e.serie.length, 0) + '</span></div><div class="stack"><span class="tiny muted">Volume</span><span class="big-num" style="font-size:18px">' + fmtN(x.vol, 0) + ' kg</span></div></div>'
         + (x.recs.length ? '<div class="card soft"><span class="eyebrow">Record personali</span>' + x.recs.map(r => '<span style="font-weight:600">' + esc(r.nome) + ' · ' + fmtN(+r.kg) + ' kg × ' + r.rip + '</span>').join('') + (CLX ? '' : '<button type="button" class="btn sm dark" style="align-self:flex-start" data-a="recshare" data-i="0">Condividi il record</button>') + '</div>' : '')
@@ -5459,9 +5493,7 @@ const AI = {
     if (!giorni.length) { d.err = (d.err ? d.err + ' ' : '') + 'Non ho riconosciuto esercizi. Scrivili una riga per esercizio, così: "Squat 4x6 rec 90".'; render(); return; }
     d.preview = { nome: FILES.import ? FILES.import.name.replace(/\.[^.]+$/, '').slice(0, 60) : 'La mia scheda', riscaldamento: giorni.riscaldamento || '', giorni: giorni.slice(), prossimo: 0 }; d.via = 'locale'; render();
   },
-  usaschedapt(){ const D = dalpt(); if (!D || !D.scheda) return; const nm = (D.scheda.nome || 'Scheda') + ' (dal PT)'; const ex = S.schede.find(x => x.dalpt);
-    const x = { nome: nm.slice(0, 40), dalpt: 1, riscaldamento: '', prossimo: 0, giorni: (D.scheda.giorni || []).map(g => ({ id: rid(), nome: g.nome, esercizi: (g.esercizi || []).map(e => ({ id: rid(), nome: e.nome, tipo: e.tipo || 'pesi', unita: e.unita || '', serie: +e.serie || 3, rip: e.rip || 10, rec: +e.rec || 90, nota: e.nota || '' })) })) };
-    if (ex) { x.id = ex.id; x.disc = ex.disc; setSchedaCorrente(x); } else addScheda(x); save(); UI.sheet = null; toast(ex ? 'Scheda del PT aggiornata' : 'Scheda del PT pronta in Allenati'); go('allenati'); },
+  usaschedapt(){ const D = dalpt(); if (!D || !D.scheda) return; syncSchedaPT(D); const x = S.schede.find(y => y.dalpt); if (x) { S.scheda = x; S.schedaId = x.id; save(); } UI.sheet = null; go('allenati'); },
   importuse(ds){ const d = sheetD(); if (!d.preview) return; const x = Object.assign({ prossimo: 0 }, d.preview, { esempio: false }); if ((ds && ds.m === 'add') || d.add) { if (d.add && d.nome) x.nome = d.nome; if (d.disc) x.disc = d.disc; addScheda(x); } else { x.id = S.scheda.id; x.disc = S.scheda.disc; setSchedaCorrente(x); } save(); FILES.import = null; UI.sheet = null; toast('Scheda caricata: ' + x.giorni.length + ' giorni'); go('allenati'); },
   importback(){ const d = sheetD(); d.preview = null; d.err = ''; render(); },
   async pastoai(){
@@ -5581,7 +5613,7 @@ const A = {
   rest(ds){ const v = +ds.v; if (!LIVE.rest) return; if (v === 0) LIVE.rest = null; else LIVE.rest = Math.max(Date.now() + 1000, LIVE.rest + v * 1000); persistLive(); const c = $('#restcard'); if (c) c.hidden = !LIVE.rest; const r = document.querySelector('[data-rest]'); if (r) r.textContent = restStr(); },
   finishlive(){ UI.sheet = null; finishLive(); },
   discardlive(){ LIVE = null; persistLive(); UI.sheet = null; go('allenati'); },
-  delsess(ds){ ask('Eliminare l\'allenamento?', 'Le serie e gli XP di questo allenamento verranno tolti.', 'Elimina', () => { if (CLX) { const c = CLI[CLX]; c.sessioni = (c.sessioni || []).filter(x => x.id !== ds.id); saveCli(c); toast('Allenamento eliminato'); return; } Object.keys(SESS).forEach(mk => { const i = (SESS[mk].sessioni || []).findIndex(s => s.id === ds.id); if (i >= 0) { SESS[mk].sessioni.splice(i, 1); saveSess(mk); } }); toast('Allenamento eliminato'); }); },
+  delsess(ds){ if (String(ds.id).indexOf('pt-') === 0) { toast('Seduta registrata dal tuo PT'); return; } ask('Eliminare l\'allenamento?', 'Le serie e gli XP di questo allenamento verranno tolti.', 'Elimina', () => { if (CLX) { const c = CLI[CLX]; c.sessioni = (c.sessioni || []).filter(x => x.id !== ds.id); saveCli(c); toast('Allenamento eliminato'); return; } Object.keys(SESS).forEach(mk => { const i = (SESS[mk].sessioni || []).findIndex(s => s.id === ds.id); if (i >= 0) { SESS[mk].sessioni.splice(i, 1); saveSess(mk); } }); toast('Allenamento eliminato'); }); },
   delrec(ds){ S.recupero = S.recupero.filter(a => a.id !== ds.id); save(); render(); },
   delfood(ds){ const d = UI.nday; setFood(d, foodFor(d).filter(i => i.id !== ds.id)); UI.tips = null; render(); },
   delinteg(ds){ S.nutri.integratori = S.nutri.integratori.filter(i => i.id !== ds.id); save(); UI.sheet = null; render(); },
@@ -5601,7 +5633,7 @@ const A = {
     else if (w === 'delcli') ask('Eliminare il cliente?', 'Anamnesi, lezioni, misure e note di questo cliente verranno cancellate per sempre.', 'Elimina', async () => { const u = CLI[ds.id] && CLI[ds.id].appUid; clearTimeout(PUB_T[ds.id]); delete CLI[ds.id]; await Store.delPrivate('cl-' + ds.id); if (u && Store.db) { try { await Store.db.doc('dalpt/' + u).delete(); } catch(e) {} } UI.route = 'clienti'; await loadFor('clienti'); });
     else if (w === 'delinteg') ask('Eliminare l\'integratore?', 'Sparisce dalla lista dei salvati. Le dosi già segnate nei giorni passati restano nel conteggio.', 'Elimina', () => { S.nutri.integratori = S.nutri.integratori.filter(i => i.id !== ds.id); save(); });
     else if (w === 'delpiano') ask('Rimuovere il piano?', 'Gli obiettivi giornalieri restano finché non li cambi.', 'Rimuovi', () => { S.nutri.piano = null; save(); });
-    else if (w === 'unlink') ask('Cambiare o scollegare il PT?', 'Ti scolleghi da ' + S.profilo.ptNome + ': non vedrà più i tuoi dati. Puoi inserire un nuovo codice oppure continuare da solo. I tuoi dati restano.', 'Scollegati', () => { if (Store.db && S.profilo.ptId) Store.db.doc('condivisi/' + Store.uid).delete().catch(() => {}); S.profilo.onboarded = false; S.profilo.ptId = ''; S.profilo.ptCode = ''; S.profilo.offline = false; UI.login.mode = 'cliente'; UI.login.pt = 'no'; save(); });
+    else if (w === 'unlink') ask('Cambiare o scollegare il PT?', 'Ti scolleghi da ' + S.profilo.ptNome + ': non vedrà più i tuoi dati. Puoi inserire un nuovo codice oppure continuare da solo. I tuoi dati restano.', 'Scollegati', () => { if (Store.db && S.profilo.ptId) Store.db.doc('condivisi/' + Store.uid).delete().catch(() => {}); S.profilo.onboarded = false; SH.dalpt = null; PTSESS = null; LS.del(dalptKey()); S.profilo.ptId = ''; S.profilo.ptCode = ''; S.profilo.offline = false; UI.login.mode = 'cliente'; UI.login.pt = 'no'; save(); });
     else if (w === 'linkpt') ask('Collegare un PT?', 'Ti serve il codice che ti ha dato il tuo personal trainer. I tuoi dati restano tutti.', 'Continua', () => { S.profilo.onboarded = false; UI.login.mode = 'cliente'; UI.login.pt = 'si'; save(); });
     else if (w === 'dellezioni') ask('Rimuovere il pacchetto?', 'Sparisce il conteggio delle lezioni. I tuoi allenamenti restano.', 'Rimuovi', () => { S.lezioni = null; UI.sheet = null; save(); });
     else if (w === 'logout') ask('Uscire?', 'Torni alla schermata di accesso. I tuoi dati restano salvati.', 'Esci', () => { S.profilo.onboarded = false; S.profilo.ruolo = null; UI.login.mode = 'cliente'; save(); });
@@ -5862,7 +5894,7 @@ const A = {
   menugo(){ return menuGo(); },
   menuback(){ const d = sheetD(); d.res = null; render(); },
   menuadd(ds){ const d = sheetD(); const o = d.res && d.res.opzioni[+ds.i]; if (!o) return; const txt = (d.res.locale ? 'Al locale (' + d.res.locale + '): ' : 'Al ristorante: ') + o.piatti.map(p => p.nome + (p.nota ? ' (' + p.nota + ')' : '')).join(', ') + '. Stima indicativa del totale: circa ' + Math.round(o.kcal) + ' kcal.'; FILES.pasto = null; UI.sheet = { k: 'pasto', d: { text: txt, pasto: currentPasto(), mode: 'testo' } }; render(); return AI.pastoai(); },
-  sessedit(ds){ const s = sessions().find(x => x.id === ds.id); if (!s) return; const c = clone(s); c._data = isoDate(s.inizio); c.esercizi = c.esercizi || []; UI.sheet = { k: 'sessedit', d: { s: c } }; render(); },
+  sessedit(ds){ if (String(ds.id).indexOf('pt-') === 0) { toast('Seduta registrata dal tuo PT'); return; } const s = sessions().find(x => x.id === ds.id); if (!s) return; const c = clone(s); c._data = isoDate(s.inizio); c.esercizi = c.esercizi || []; UI.sheet = { k: 'sessedit', d: { s: c } }; render(); },
   sesset(ds){ const d = sheetD(); const e = d.s && d.s.esercizi[+ds.ei]; if (!e) return; e.serie = e.serie || []; if (ds.op === 'add') { const l = e.serie[e.serie.length - 1] || { kg: '', rip: '' }; e.serie.push({ kg: l.kg, rip: l.rip }); } else e.serie.splice(+ds.si, 1); render(); },
   sesex(ds){ const d = sheetD(); if (!d.s) return; if (ds.op === 'add') d.s.esercizi.push({ nome: '', tipo: 'pesi', serie: [{ kg: '', rip: '' }] }); else d.s.esercizi.splice(+ds.ei, 1); render(); },
   sessave(){ sessSave(); },
@@ -6250,6 +6282,7 @@ async function boot(){
   LIVE = LS.get(liveKey()); if (LIVE && (!Array.isArray(LIVE.ex) || !LIVE.ex.length)) LIVE = null;
   if (LIVE && LIVE.cid) { if (CLI[LIVE.cid]) enterClient(LIVE.cid); else LIVE.cid = null; }
   save();
+  SH.dalpt = null; PTSESS = null; loadDalpt();
   if (S.profilo.ruolo && S.profilo.onboarded) { const p = go(LIVE ? 'sessione' : ROOT_ROUTES[S.profilo.ruolo]); if (!LIVE && S.profilo.ruolo === 'cliente' && !S.guida && !S.guidaVista) Promise.resolve(p).then(() => { S.guidaVista = 1; save(); if (!UI.sheet) { UI.sheet = { k: 'obgen', d: { primo: 1 } }; render(); } }); }
   else render();
 }
