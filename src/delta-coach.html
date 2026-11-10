@@ -1,30 +1,40 @@
 <title>Delta Coach</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
 <style>
-/* App mobile a una colonna, barra in basso; modalità livelli in un mondo scuro dedicato */
+/* Delta Coach v2 · nero e oro, come le schede PDF. Una colonna su carta chiara; un blocco nero per schermata con l'azione in oro; barra di navigazione nera sospesa. */
 :root{
-  --bg:#F1F2F0; --surface:#FFFFFF; --fg:#141514; --muted:#585C59; --line:#E2E4E1; --soft:#E6EBE8;
-  --ink:#141514; --ink-fg:#FFFFFF; --ink-muted:#B9BDB9; --ink-line:#3A3D3A;
-  --accent:#C23E14; --accent-ink:#FFFFFF; --accent-soft:#FBE9E2; --accent-deep:#7A2A0E;
-  --ok:#1F6E5A; --ok-soft:#E1EFEA; --warn:#8A5A0B; --warn-soft:#F7EBD3;
-  --p:#2F5BA8; --c:#B07A12; --f:#8E3D8A;
-  --g-bg:#0E0F0E; --g-panel:#171916; --g-line:#2A2D29; --g-fg:#EDEFEA; --g-muted:#9BA09A; --g-lime:#C8F04A; --g-orange:#FF8A4C; --g-track:#23261F; --g-hl:#1B1E13; --g-hl-line:#3C4721;
+  --bg:#F2F2EF; --surface:#FFFFFF; --fg:#0C0C0B; --muted:#5F5E58; --line:#E3E2DC; --soft:#E9E8E2;
+  --ink:#0A0A0A; --ink-fg:#FFFFFF; --ink-muted:#B5B2A6; --ink-line:#2E2C26;
+  --accent:#D4AF37; --accent-ink:#0A0A0A; --accent-soft:#F5ECCB; --accent-deep:#5E4800; --accent-tx:#7A5E00; --chart:#8A6A00;
+  --hot:#B93221; --hot-soft:#FBE6E1;
+  --ok:#1F6E5A; --ok-soft:#E1EFEA; --warn:#A04E08; --warn-soft:#FBE7D4;
+  --p:#2F5BA8; --c:#C2671A; --f:#8E3D8A;
+  --strong:#0C0C0B; --strong-fg:#FFFFFF; --strong-line:transparent;
+  --bar:#0C0C0B; --dock:#0A0A0A; --dock-fg:#FFFFFF; --dock-muted:#A19D90; --dock-line:#0A0A0A;
+  --g-bg:#0A0A0A; --g-panel:#161614; --g-line:#2B2A25; --g-fg:#F3F1EA; --g-muted:#A5A297; --g-lime:#D4AF37; --g-orange:#FF8A4C; --g-track:#26241D; --g-hl:#1F1B0E; --g-hl-line:#4A3F17;
   --font:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --mono:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --r-card:20px; --r-hero:24px; --r-ctl:14px;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0F110F; --surface:#181B18; --fg:#ECEEEA; --muted:#A4A9A4; --line:#2B2F2B; --soft:#1E2520;
-  --ink:#262A26; --ink-fg:#FFFFFF; --ink-muted:#BEC2BE; --ink-line:#41453F;
-  --accent:#E86A3A; --accent-ink:#1A0B04; --accent-soft:#3A1D12; --accent-deep:#F6B094;
-  --ok:#74CFAE; --ok-soft:#14302A; --warn:#E9B55A; --warn-soft:#3A2C12;
-  --p:#7FA6EC; --c:#E2B04F; --f:#D08ACB; color-scheme:dark; } }
+  --bg:#0A0A0A; --surface:#161614; --fg:#F3F1EA; --muted:#A5A297; --line:#2B2A25; --soft:#1E1D19;
+  --ink:#1D1B15; --ink-fg:#FFFFFF; --ink-muted:#BDB9AB; --ink-line:#3B372B;
+  --accent:#D4AF37; --accent-ink:#0A0A0A; --accent-soft:#2F2810; --accent-deep:#EBD07A; --accent-tx:#E2C257; --chart:#D4AF37;
+  --hot:#F07A63; --hot-soft:#3A1813;
+  --ok:#74CFAE; --ok-soft:#14302A; --warn:#F2A766; --warn-soft:#3A2512;
+  --p:#7FA6EC; --c:#F0A35E; --f:#D08ACB;
+  --strong:#34322A; --strong-fg:#F3F1EA; --strong-line:#47443A;
+  --bar:#D4AF37; --dock:#1A1916; --dock-fg:#FFFFFF; --dock-muted:#A19D90; --dock-line:#34322B; color-scheme:dark; } }
 :root[data-theme="dark"]{
-  --bg:#0F110F; --surface:#181B18; --fg:#ECEEEA; --muted:#A4A9A4; --line:#2B2F2B; --soft:#1E2520;
-  --ink:#262A26; --ink-fg:#FFFFFF; --ink-muted:#BEC2BE; --ink-line:#41453F;
-  --accent:#E86A3A; --accent-ink:#1A0B04; --accent-soft:#3A1D12; --accent-deep:#F6B094;
-  --ok:#74CFAE; --ok-soft:#14302A; --warn:#E9B55A; --warn-soft:#3A2C12;
-  --p:#7FA6EC; --c:#E2B04F; --f:#D08ACB; color-scheme:dark; }
+  --bg:#0A0A0A; --surface:#161614; --fg:#F3F1EA; --muted:#A5A297; --line:#2B2A25; --soft:#1E1D19;
+  --ink:#1D1B15; --ink-fg:#FFFFFF; --ink-muted:#BDB9AB; --ink-line:#3B372B;
+  --accent:#D4AF37; --accent-ink:#0A0A0A; --accent-soft:#2F2810; --accent-deep:#EBD07A; --accent-tx:#E2C257; --chart:#D4AF37;
+  --hot:#F07A63; --hot-soft:#3A1813;
+  --ok:#74CFAE; --ok-soft:#14302A; --warn:#F2A766; --warn-soft:#3A2512;
+  --p:#7FA6EC; --c:#F0A35E; --f:#D08ACB;
+  --strong:#34322A; --strong-fg:#F3F1EA; --strong-line:#47443A;
+  --bar:#D4AF37; --dock:#1A1916; --dock-fg:#FFFFFF; --dock-muted:#A19D90; --dock-line:#34322B; color-scheme:dark; }
 html,body{height:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;-webkit-tap-highlight-color:transparent}
 body.gamebody{background:var(--g-bg)}
@@ -63,11 +73,11 @@ button.card{font:inherit;color:inherit;text-align:left;width:100%}
 .btn.out{border:2px solid var(--fg);background:transparent;font-weight:700}
 .btn.sm{min-height:40px;padding:0 12px;font-size:13px;border-radius:10px}
 .btn.wide{width:100%}
-.btn.ghost{background:transparent;border-color:transparent;color:var(--accent);padding:0 8px}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-tx);padding:0 8px}
 .card.ink .btn{background:transparent;color:var(--ink-fg);border-color:var(--ink-line)}
 .card.ink .btn.light{background:var(--ink-fg);color:#141514;border-color:transparent}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
-.link{color:var(--accent);font-weight:600;text-decoration:none;background:none;border:0;padding:0;min-height:36px;display:inline-flex;align-items:center}
+.link{color:var(--accent-tx);font-weight:600;text-decoration:none;background:none;border:0;padding:0;min-height:36px;display:inline-flex;align-items:center}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 8px;border-radius:6px;background:var(--soft);color:var(--fg);white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)}
 .chip.acc{background:var(--accent-soft);color:var(--accent-deep)}
@@ -102,7 +112,7 @@ textarea.input{padding:10px 12px;min-height:84px;resize:vertical;line-height:1.4
 .pkg span.on{background:var(--fg)}
 .big-num{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
 .delta-up{color:var(--ok);font-weight:600;font-size:13px}
-.delta-down{color:var(--accent);font-weight:600;font-size:13px}
+.delta-down{color:var(--accent-tx);font-weight:600;font-size:13px}
 .empty{padding:16px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-size:14px;line-height:1.5}
 .busy{display:flex;align-items:center;gap:10px;padding:14px;border-radius:14px;background:var(--soft);font-weight:600}
 .busy::before{content:"";width:16px;height:16px;border-radius:8px;border:2px solid var(--muted);border-top-color:transparent;animation:spin 0.8s linear infinite;flex:0 0 auto}
@@ -345,13 +355,13 @@ span.nbar{cursor:default}
 .pc-av svg,.pg-stage svg,.av-prev svg{width:100%;height:auto;display:block}
 .pc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;justify-content:center}
 .pc-lv{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.pc-lv .mono{font-weight:700;font-size:14px;color:var(--accent)}
+.pc-lv .mono{font-weight:700;font-size:14px;color:var(--accent-tx)}
 .pc-cls{font-weight:800;font-size:16px;line-height:1.2}
 .pc-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);align-items:center}
 .pc-fl{display:inline-flex;align-items:center;gap:3px}
 .pc-say{font-size:13px;line-height:1.4;background:var(--bg);border-radius:12px;padding:7px 10px}
 .pc-new{font-size:13px;font-weight:700;line-height:1.35;color:var(--accent-ink);background:var(--accent);border-radius:12px;padding:7px 10px}
-.pc-tag{align-self:flex-start;font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px}
+.pc-tag{align-self:flex-start;font-size:11px;font-weight:700;color:var(--accent-tx);background:var(--accent-soft);border-radius:999px;padding:2px 8px}
 .pg-hero{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px 4px 8px;background:radial-gradient(circle at 50% 30%, var(--accent-soft), transparent 68%)}
 .pg-stage{width:min(70vw,270px)}
 .pg-say{font-size:14px;line-height:1.45;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;text-align:center;max-width:340px}
@@ -376,9 +386,9 @@ span.nbar{cursor:default}
 .screen.game .card h2{color:var(--g-fg)}
 .screen.game .eq{background:transparent;border-color:var(--g-line);color:var(--g-fg)}
 .screen.game .eq.on{border-color:var(--g-lime)}
-.screen.game .eq.fresh{border-color:var(--g-lime);box-shadow:0 0 0 3px rgba(184,242,74,.18)}
+.screen.game .eq.fresh{border-color:var(--g-lime);box-shadow:0 0 0 3px rgba(212,175,55,.2)}
 .screen.game .tr{border-color:var(--g-line)}
-.screen.game .tr.on{border-color:var(--g-lime);background:rgba(184,242,74,.07)}
+.screen.game .tr.on{border-color:var(--g-lime);background:rgba(212,175,55,.08)}
 .screen.game .pg-say{background:var(--g-panel);border-color:var(--g-line);color:var(--g-fg)}
 .screen.game .pg-hero{background:none}
 .screen.game .bar{background:var(--g-track)}
@@ -395,7 +405,7 @@ span.nbar{cursor:default}
 .avs-prev{height:190px;border-radius:18px;background:var(--bg);background-image:radial-gradient(circle at 50% 60%, var(--accent-soft), transparent 70%);padding-top:6px}
 .sheet .avs-prev{position:sticky;top:-20px;z-index:3;margin:0 -16px;width:calc(100% + 32px);border-radius:0;box-shadow:0 8px 12px -10px rgba(0,0,0,.18)}
 .pg-hero .avlive{border-radius:22px;background:radial-gradient(60% 55% at 50% 45%, var(--accent-soft), transparent 72%);box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--gr) 45%, transparent)}
-.screen.game .pg-hero .avlive{background:radial-gradient(60% 55% at 50% 45%, rgba(184,242,74,.10), transparent 72%)}
+.screen.game .pg-hero .avlive{background:radial-gradient(60% 55% at 50% 45%, rgba(212,175,55,.10), transparent 72%)}
 .avlive .ab{animation:avBreath 5s ease-in-out infinite;transform-box:view-box;transform-origin:120px 300px}
 .avlive .ah{animation:avTilt 11s ease-in-out infinite;transform-box:view-box;transform-origin:120px 200px}
 .avlive .ae{animation:avBlink 5.4s infinite;transform-box:fill-box;transform-origin:50% 50%}
@@ -436,7 +446,7 @@ span.nbar{cursor:default}
 .cal button.done>span:first-child{color:var(--ok)}
 .cal button[aria-pressed="true"].done>span:first-child{color:inherit}
 @media (prefers-reduced-motion: reduce){.avlive *,.avlive.intro svg,.pcard3.intro .pc3-info,.pcard3.intro .pc3-lv{animation:none!important}}
-.wkd.on.ex i{background:var(--accent-soft);color:var(--accent)}
+.wkd.on.ex i{background:var(--accent-soft);color:var(--accent-tx)}
 .exgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .excard{gap:10px;justify-content:space-between;padding:14px}
 .excard .btn{width:100%}
@@ -446,6 +456,133 @@ span.nbar{cursor:default}
 .card.ssc{border:2px solid var(--accent)}
 .ssdiv{border-top:1px dashed var(--line);margin:6px 0 2px}
 .setrow.ssnow{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
+
+/* ================= Delta v2 ================= */
+/* dentro i blocchi neri l'accento è sempre l'oro pieno */
+.card.ink,.hero,.tmrcard,.tabbar-in,.toast{--accent-tx:#E2C257;--accent-deep:#EBD07A;--accent-soft:#2F2810;--chart:#D4AF37}
+body{line-height:1.4;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+:focus-visible{outline:2px solid var(--accent-tx);outline-offset:2px}
+/* tipografia: titoli larghi e pesanti, numeri tabellari nella stessa famiglia */
+h1{font-size:30px;font-weight:800;font-stretch:118%;letter-spacing:-.025em;line-height:1.08}
+h2{font-size:18px;font-weight:750;letter-spacing:-.01em;line-height:1.25}
+.eyebrow{font-size:12.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted);line-height:1.3}
+.card.ink .eyebrow,.hero .eyebrow{color:var(--accent)}
+.mono,.big-num,.input.big,.setrow .input,.hgrid button,.exl .s{font-family:var(--font);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.big-num{font-size:24px;font-weight:750;font-stretch:112%;letter-spacing:-.02em}
+.flabel,.field label{font-weight:650}
+.small{font-size:13.5px}
+/* superfici */
+.screen{padding:22px 16px calc(112px + env(safe-area-inset-bottom,0px));gap:14px}
+.screen.notab{padding-bottom:32px}
+.card{border-radius:var(--r-card);padding:18px 16px;gap:12px}
+.card.soft{background:var(--soft)}
+.card.ink,.hero{background:var(--ink);border:1px solid var(--ink-line);border-radius:var(--r-hero)}
+.hero{padding:20px 18px;gap:14px}
+.hstat div{background:rgba(255,255,255,.07);border-radius:14px;padding:10px 12px}
+.hstat b{font-size:20px;font-weight:750;font-stretch:112%}
+.hchip{background:rgba(255,255,255,.1)!important;border-radius:99px;padding:5px 10px}
+.card.nextc{border:2px solid var(--fg)}
+.empty{border-radius:16px;border-color:var(--line);background:transparent}
+.tip{border-radius:14px}
+.box{border-radius:14px;padding:12px}
+.box.acc{background:var(--accent-soft);color:var(--accent-deep)}
+/* comandi */
+.btn{border-radius:var(--r-ctl);font-weight:650;transition:transform .08s ease,background-color .15s ease,border-color .15s ease}
+.btn.pri{background:var(--accent);color:var(--accent-ink);font-weight:750}
+.btn.dark{background:var(--fg);color:var(--bg);font-weight:700}
+.btn.out{border:1.5px solid var(--fg)}
+.btn.sm{border-radius:11px}
+.card.ink .btn.pri,.hero .btn.pri{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.ghost,.link{color:var(--accent-tx)}
+.btn:active:not([disabled]),.pill:active,.qbtn:active,.addmain:active,.addcam:active,.okbtn:active,.tab:active{transform:scale(.97)}
+.avatar{border-radius:50%;font-weight:750;transition:transform .08s ease}
+.avatar.me{background:var(--ink);color:var(--accent);border-color:var(--ink);font-stretch:112%;font-size:14px}
+.chip{border-radius:8px;padding:4px 9px;font-weight:650}
+.pill{font-weight:650;border-width:1.5px}
+.seg{border-radius:14px}
+.seg button{border-radius:10px;font-weight:650}
+.seg button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.input,select.input,textarea.input{border-width:1.5px;border-radius:13px;transition:border-color .15s ease,box-shadow .15s ease}
+.input:focus,select.input:focus,textarea.input:focus{outline:none;border-color:var(--fg);box-shadow:0 0 0 3px var(--accent-soft)}
+.input.big{border:2px solid var(--fg);font-weight:700;letter-spacing:.04em}
+.switch[aria-checked="true"]{background:var(--accent)} .switch[aria-checked="true"]::after{background:var(--accent-ink)}
+.check input{accent-color:var(--fg)}
+/* avanzamento */
+.bar{border-radius:99px} .bar>span{border-radius:99px;background:var(--bar)}
+.bar.over>span,.mbar.lim.over .mf{background:var(--hot)}
+.dot.red{background:var(--hot)} .dot.amber{background:var(--warn)}
+.delta-down{color:var(--hot)}
+.delta-up::before{content:"\25B2\00A0";font-size:.72em} .delta-down::before{content:"\25BC\00A0";font-size:.72em}
+.pkg span{border-radius:99px} .pkg span.on{background:var(--bar)}
+.prog span{border-radius:99px;height:5px} .prog span.done{background:var(--fg)} .prog span.cur{background:var(--accent)}
+.nbar.over .col i{background:var(--hot)}
+.nbar .col{border-radius:6px} .nbar .col i{border-radius:6px}
+.wkd i{width:38px;height:38px;border-radius:50%}
+.wkd.on i{background:var(--accent);color:var(--accent-ink)}
+.wkd.on.ex i{background:var(--accent-soft);color:var(--accent-deep)}
+.dbadge{border-radius:13px;font-stretch:112%} .dbadge.on{background:var(--accent);color:var(--accent-ink)}
+.dbox{border-radius:13px}
+/* allenamento in corso */
+.okbtn{width:46px;height:46px;border-radius:50%;transition:transform .08s ease,background-color .15s ease}
+.okbtn.on{background:var(--accent);border-color:transparent;color:var(--accent-ink)}
+.tmrbtn{border-width:1.5px;border-radius:13px} .tmrbtn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.setrow .input{font-weight:700;font-size:17px}
+.setrow.head{font-weight:650}
+.exnav button{border-radius:99px;font-weight:650;border-width:1.5px}
+.tmrbig{font-family:var(--font);font-stretch:112%;font-weight:800;letter-spacing:-.03em}
+.tmrbig.over{color:var(--accent)}
+.tmrtrack span{background:var(--accent)}
+.tmrcard .pill[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.livebar{padding:12px 14px;gap:12px}
+.livedot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex:0 0 auto;box-shadow:0 0 0 0 rgba(212,175,55,.6);animation:livepulse 1.8s ease-out infinite}
+@keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(212,175,55,.55)}100%{box-shadow:0 0 0 10px rgba(212,175,55,0)}}
+.livebar .btn.pri{pointer-events:none}
+.card.ssc{border:2px solid var(--accent)}
+.setrow.ssnow{outline:2px solid var(--accent-tx)}
+/* nutrizione */
+.addmain{border-radius:18px;background:var(--accent);color:var(--accent-ink)}
+.addcam{border-radius:18px}
+.macro .bar{height:9px}
+.aibar{border-radius:14px}
+.pday{border-radius:13px} .pday.tr::after{background:var(--accent-tx)}
+.svchip{border-radius:16px}
+/* calendario */
+.cal button{border-radius:12px}
+.cal button.today{border:2px solid var(--fg)}
+/* navigazione: barra nera sospesa, icona attiva in oro */
+.tabbar{background:linear-gradient(to top,var(--bg) 58%,transparent);border-top:0;padding:14px 12px calc(10px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.tabbar-in{pointer-events:auto;max-width:536px;background:var(--dock);border:1px solid var(--dock-line);border-radius:24px;padding:4px;box-shadow:0 14px 30px -14px rgba(0,0,0,.55)}
+.tab{min-height:56px;border-radius:20px;gap:3px;font-size:10.5px;font-weight:600;color:var(--dock-muted);transition:transform .08s ease,color .15s ease}
+.tab[aria-current="page"]{color:var(--dock-fg);font-weight:700}
+.tab[aria-current="page"] svg{color:var(--accent)}
+.tabbar.g{background:linear-gradient(to top,var(--g-bg) 58%,transparent)}
+.tabbar.g .tab{color:var(--dock-muted)} .tabbar.g .tab[aria-current="page"]{color:var(--dock-fg)}
+.toast{bottom:calc(100px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--ink-fg);border:1px solid var(--ink-line);border-radius:14px;box-shadow:0 12px 28px -14px rgba(0,0,0,.5)}
+/* pannelli dal basso */
+.scrim{background:rgba(8,8,6,.56)}
+.sheet{border-radius:28px 28px 0 0;padding-top:12px;gap:14px}
+.sheet .grab{width:44px;height:5px;border-radius:99px;margin-bottom:4px}
+.scrim.fresh{animation:scrimIn .2s ease both}
+.scrim.fresh .sheet{animation:sheetIn .3s cubic-bezier(.2,.85,.25,1) both}
+@keyframes scrimIn{from{background:rgba(8,8,6,0)}}
+@keyframes sheetIn{from{transform:translateY(36px);opacity:.4}}
+/* livelli: stesso mondo nero e oro */
+.g-label{font-family:var(--font);font-size:12.5px;font-weight:600;letter-spacing:.01em;text-transform:none}
+.g-panel{border-radius:18px;padding:18px 16px}
+.g-panel .c1{border-top-left-radius:18px} .g-panel .c2{border-bottom-right-radius:18px}
+.g-item{border-radius:14px}
+.g-box{border-radius:7px} .g-box.on{color:#0A0A0A}
+.g-track{border-radius:99px;overflow:hidden} .g-track>span{border-radius:99px}
+.rpbtn{border-radius:18px;border-width:1.5px}
+.filebox{border-radius:18px}
+.clirow .cav,.cav{border-radius:14px}
+/* marchio */
+.brandmark{width:44px;height:44px;border-radius:13px;background:var(--ink);border:1px solid var(--ink-line);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.brandname{font-weight:800;font-stretch:118%;letter-spacing:-.01em;font-size:17px}
+/* comandi forti: neri su chiaro, grigio caldo rialzato su scuro (il bianco pieno resta all'oro e alla selezione) */
+.btn.dark,.seg button[aria-selected="true"]{background:var(--strong);color:var(--strong-fg);border-color:var(--strong-line)}
+.card.ink .btn.light{color:#0A0A0A}
+@media (prefers-reduced-motion: reduce){ .livedot{animation:none} }
 </style>
 
 <div id="app" class="app"><div class="boot">Caricamento…</div></div>
@@ -1180,7 +1317,7 @@ function radarSVG(st, game){
   const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
   const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
   const P = a => a.map(v => v.toFixed(1)).join(',');
-  const col = game ? 'var(--g-lime)' : 'var(--accent)', line = game ? 'var(--g-line)' : 'var(--line)', fg = game ? 'var(--g-fg)' : 'var(--fg)', mu = game ? 'var(--g-muted)' : 'var(--muted)';
+  const col = game ? 'var(--g-lime)' : 'var(--chart)', line = game ? 'var(--g-line)' : 'var(--line)', fg = game ? 'var(--g-fg)' : 'var(--fg)', mu = game ? 'var(--g-muted)' : 'var(--muted)';
   let h = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Profilo: ' + esc(STATS.map(s => s[1] + ' ' + (st[s[0]] == null ? 'non misurata' : st[s[0]])).join(', ')) + '" style="display:block;max-width:380px;margin:0 auto">';
   h += '<g transform="translate(' + cx + ' ' + (cy + 2) + ') scale(0.6)" fill="' + fg + '" stroke="' + fg + '" stroke-width="6" stroke-linejoin="round" opacity="0.09">' + BODY + '</g>';
   [0.25, 0.5, 0.75, 1].forEach(f => { h += '<polygon points="' + STATS.map((s, i) => P(pt(i, R * f))).join(' ') + '" fill="none" stroke="' + line + '" stroke-width="' + (f === 1 ? 1.5 : 1) + '"/>'; });
@@ -1933,7 +2070,7 @@ function lineChart(pts, unit){
   const top = mx - padv, bot = mn + padv;
   const lab = v => (Math.round(v * 10) / 10).toLocaleString('it-IT');
   const first = pts[0], last = pts[pts.length - 1];
-  return '<svg role="img" aria-label="Andamento da ' + lab(first.y) + ' a ' + lab(last.y) + ' ' + esc(unit) + '" viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;color:var(--accent)">'
+  return '<svg role="img" aria-label="Andamento da ' + lab(first.y) + ' a ' + lab(last.y) + ' ' + esc(unit) + '" viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;color:var(--accent-tx)">'
     + '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(top).toFixed(1) + '" y2="' + Y(top).toFixed(1) + '" stroke="var(--line)"/>'
     + '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(bot).toFixed(1) + '" y2="' + Y(bot).toFixed(1) + '" stroke="var(--line)"/>'
     + '<text x="' + (pl - 6) + '" y="' + (Y(top) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono, monospace">' + lab(top) + '</text>'
@@ -1996,7 +2133,7 @@ async function loadFor(r){
 }
 
 /* ---------- render ---------- */
-const app = $('#app');
+const app = $('#app'); let LAST_SHEET_K = null;
 function render(){
   if (!S) return; AUTOC = null;
   const r = UI.route; let html = '';
@@ -2013,7 +2150,8 @@ function render(){
     if (LIVE && logged && !(r === 'sessione') && !staffBlocked()) html = html.replace(/<div class="screen[^"]*"[^>]*>/, m => m + liveBar());
   } catch(e) { console.error(e); html = '<div class="screen"><div class="empty">Questa schermata ha avuto un problema. <button class="link" data-a="go" data-r="' + ROOT_ROUTES[role || 'cliente'] + '">Torna all\'inizio</button></div></div>'; }
   if (UI.sheet) { let sh = ''; try { sh = renderSheet(); if (['esercizio', 'sessedit', 'rinomina'].indexOf(UI.sheet.k) >= 0) sh += exDatalist(); } catch(e) { console.error(e); sh = '<p>Problema in questo pannello.</p><button type="button" class="btn" data-a="closesheet">Chiudi</button>'; }
-    html += '<div class="scrim" data-a="closesheet"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + sh + '</div></div>'; }
+    html += '<div class="scrim' + (LAST_SHEET_K !== UI.sheet.k ? ' fresh' : '') + '" data-a="closesheet"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + sh + '</div></div>'; }
+  LAST_SHEET_K = UI.sheet ? UI.sheet.k : null;
   const active = document.activeElement; const keepId = active && active.id && app.contains(active) ? active.id : null;
   app.innerHTML = html;
   if (keepId) { const el = document.getElementById(keepId); if (el) { try { el.focus({ preventScroll: true }); } catch(e){} } }
@@ -2031,7 +2169,7 @@ function topbar(eyebrow, title, opts){
   opts = opts || {};
   const left = opts.back ? '<button type="button" class="avatar" data-a="go" data-r="' + opts.back + '" aria-label="Indietro">' + ic('back', 18) + '</button>' : '';
   return '<div class="topbar"><div class="row start" style="gap:10px;min-width:0">' + left + '<div class="t">' + (eyebrow ? '<span class="eyebrow">' + esc(eyebrow) + '</span>' : '') + '<h1>' + esc(title) + '</h1></div></div>'
-    + (opts.noProfile ? '' : '<button type="button" class="avatar" data-a="go" data-r="profilo" aria-label="Profilo e impostazioni">' + initials(S.profilo.nome) + '</button>') + '</div>';
+    + (opts.noProfile ? '' : '<button type="button" class="avatar me" data-a="go" data-r="profilo" aria-label="Profilo e impostazioni">' + initials(S.profilo.nome) + '</button>') + '</div>';
 }
 function todayLabel(){ const d = new Date(); return GGL[d.getDay()] + ' ' + d.getDate() + ' ' + MML[d.getMonth()]; }
 
@@ -2064,7 +2202,7 @@ function renderLogin(){
       + '<button class="btn pri wide" type="submit">Entra come ' + ROLE_LABEL[L.role].toLowerCase() + '</button></form>'
       + '<div style="margin-top:auto;border-top:1px solid var(--line);padding-top:16px"><button type="button" class="btn wide" data-a="loginmode" data-m="cliente">' + ic('back', 18) + ' Sono un cliente</button></div>';
   }
-  return '<div class="screen notab" style="gap:18px"><div class="row start" style="gap:10px"><span class="avatar" style="background:var(--fg);color:var(--bg);border:0;border-radius:12px">Δ</span><span style="font-weight:800;letter-spacing:.02em">Delta Coach</span></div>' + body + '</div>';
+  return '<div class="screen notab" style="gap:18px"><div class="row start brand" style="gap:10px"><span class="brandmark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3.2 21.6 20.4H2.4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg></span><span class="brandname">Delta Coach</span></div>' + body + '</div>';
 }
 function genderPills(cur){ return [['m','maschile'],['f','femminile'],['n','neutro']].map(g => '<button type="button" class="pill" data-a="setgender" data-v="' + g[0] + '" aria-pressed="' + (cur === g[0]) + '">' + g[1] + '</button>').join(''); }
 
@@ -2365,7 +2503,7 @@ async function effettiGo(){
 
 function liveBanner(){ return ''; }
 function liveBar(){ const c = LIVE.cid && CLI[LIVE.cid]; const fatte = LIVE.ex.reduce((a, e) => a + e.serie.filter(x => x.ok && !x.skip).length, 0), tot = LIVE.ex.reduce((a, e) => a + e.serie.filter(x => !x.skip).length, 0);
-  return '<button type="button" class="card livebar" style="flex-direction:row;align-items:center;border:2px solid var(--accent)" data-a="go" data-r="sessione"><span class="stack" style="flex:1;min-width:0"><span class="eyebrow" style="color:var(--accent)">' + (LIVE.bg ? 'Allenamento in pausa' : 'Allenamento in corso') + (c ? ' · con ' + esc(c.nome || 'cliente') : '') + '</span><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(LIVE.giorno) + '</span><span class="tiny muted mono"><span data-elapsed="1">' + elapsedStr() + '</span> · ' + fatte + ' serie su ' + tot + '</span></span><span class="btn pri sm">Riprendi</span></button>'; }
+  return '<button type="button" class="card ink livebar" style="flex-direction:row;align-items:center" data-a="go" data-r="sessione"><span class="livedot" aria-hidden="true"></span><span class="stack" style="flex:1;min-width:0"><span class="eyebrow">' + (LIVE.bg ? 'Allenamento in pausa' : 'Allenamento in corso') + (c ? ' · con ' + esc(c.nome || 'cliente') : '') + '</span><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(LIVE.giorno) + '</span><span class="tiny muted mono"><span data-elapsed="1">' + elapsedStr() + '</span> · ' + fatte + ' serie su ' + tot + '</span></span><span class="btn pri sm">Riprendi</span></button>'; }
 function nutriMini(){
   const t = targetFor(isoDate(new Date())); const tot = sumItems(foodFor(isoDate(new Date())));
   return '<button type="button" class="card" data-a="go" data-r="nutrizione"><div class="row"><span class="eyebrow">Alimentazione di oggi</span>' + ic('chev', 18) + '</div>'
@@ -2513,7 +2651,7 @@ SCREENS.allenati = function(){
     sc.giorni.forEach((g, gi) => { const isNext = nd && nd.id === g.id; const ld = lastDone(g.id); const mus = muscoliDi(g);
       h += '<div class="card' + (isNext ? ' nextc' : '') + '"><div class="row start" style="gap:12px;align-items:flex-start"><span class="dbadge' + (isNext ? ' on' : '') + '">' + String.fromCharCode(65 + gi) + '</span><div class="stack" style="flex:1"><span style="font-weight:700;font-size:16px;line-height:1.25">' + esc(g.nome) + '</span><span class="small muted">' + g.esercizi.length + ' esercizi · ' + serieTot(g) + ' serie · ~' + durataStimata(g) + ' min</span>' + (mus.length ? '<div class="mchips" style="margin-top:4px">' + mus.map(m => '<span class="chip">' + m + '</span>').join('') + '</div>' : '') + '</div></div>'
         + (g.esercizi.length ? '<div class="exl">' + g.esercizi.slice(0, 4).map(e => '<span class="n">' + esc(e.nome) + '</span><span class="s">' + exFmt(e) + '</span>').join('') + '</div>' + (g.esercizi.length > 4 ? '<span class="tiny muted">e altri ' + (g.esercizi.length - 4) + '</span>' : '') : '<span class="small muted">Nessun esercizio: aggiungili in Modifica.</span>')
-        + '<div class="row" style="border-top:1px solid var(--line);padding-top:10px"><span class="tiny muted">' + (isNext ? '<span style="color:var(--accent);font-weight:700">La prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span><button type="button" class="btn sm ' + (isNext ? 'pri' : 'dark') + '" data-a="startday" data-id="' + g.id + '">Inizia</button></div></div>'; });
+        + '<div class="row" style="border-top:1px solid var(--line);padding-top:10px"><span class="tiny muted">' + (isNext ? '<span style="color:var(--accent-tx);font-weight:700">La prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span><button type="button" class="btn sm ' + (isNext ? 'pri' : 'dark') + '" data-a="startday" data-id="' + g.id + '">Inizia</button></div></div>'; });
   }
   h += exSection();
   h += '<div class="qbtns"><button type="button" class="qbtn" data-a="sheet" data-k="nuovascheda">' + ic('plus', 20) + 'Nuova scheda</button>' + (CLX ? '' : '<button type="button" class="qbtn" data-a="sheet" data-k="attivita">' + ic('plus', 20) + 'Altra attività</button>') + '<button type="button" class="qbtn" data-a="go" data-r="scheda">' + ic('edit', 20) + 'Modifica scheda</button><button type="button" class="qbtn" data-a="sheet" data-k="import">' + ic('upload', 20) + 'Carica scheda</button></div>';
@@ -3000,7 +3138,7 @@ function clTabAllenamenti(c){
     h += '<div class="card"><div class="row"><span class="eyebrow">' + (one ? 'Seduta' : 'Scegli la seduta di oggi') + '</span>' + (LIVE && !live ? '<span class="tiny muted">hai già un allenamento in corso</span>' : '') + '</div>';
     SC.forEach(sc => { if (SC.length > 1) h += '<span class="tiny muted" style="font-weight:700;padding-top:4px">' + esc(sc.nome || 'Scheda') + (sc.id === nx.sc.id ? ' · scheda attiva' : '') + '</span>';
       sc.giorni.forEach((g, gi) => { if (!(g.esercizi || []).length) return; const isNext = g.id === nx.g.id; const ld = lastOf[g.id];
-        h += '<div class="stack" style="gap:8px;padding:10px 0;border-top:1px solid var(--line)"><div class="row start" style="align-items:flex-start"><span class="dbadge' + (isNext ? ' on' : '') + '">' + String.fromCharCode(65 + gi % 26) + '</span><div class="stack" style="flex:1"><span style="font-weight:700;line-height:1.25">' + esc(g.nome) + '</span><span class="tiny muted">' + g.esercizi.length + ' esercizi · ' + (isNext ? '<span style="color:var(--accent);font-weight:700">la prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span></div>'
+        h += '<div class="stack" style="gap:8px;padding:10px 0;border-top:1px solid var(--line)"><div class="row start" style="align-items:flex-start"><span class="dbadge' + (isNext ? ' on' : '') + '">' + String.fromCharCode(65 + gi % 26) + '</span><div class="stack" style="flex:1"><span style="font-weight:700;line-height:1.25">' + esc(g.nome) + '</span><span class="tiny muted">' + g.esercizi.length + ' esercizi · ' + (isNext ? '<span style="color:var(--accent-tx);font-weight:700">la prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span></div>'
           + (live === g.id ? '<button type="button" class="btn sm pri" data-a="go" data-r="sessione">Riprendi</button>' : '<button type="button" class="btn sm ' + (isNext ? 'pri' : 'dark') + '" data-a="clstart" data-cid="' + c.id + '" data-id="' + g.id + '">Inizia</button>') + '</div>'
           + (isNext ? '<div class="exl">' + g.esercizi.slice(0, 6).map(e => '<span class="n">' + esc(e.nome) + '</span><span class="s">' + exFmt(e) + '</span>').join('') + '</div>' + (g.esercizi.length > 6 ? '<span class="tiny muted">e altri ' + (g.esercizi.length - 6) + '</span>' : '') : '') + '</div>'; }); });
     h += '<span class="tiny muted" style="line-height:1.4">Puoi iniziare la seduta che vuoi: la successiva in programma riparte da quella che fate oggi.</span></div>'; }
@@ -3067,7 +3205,7 @@ function mattinoInsights(m){
 }
 function sonnoBars(list){
   if (!list.length) return ''; const mx = Math.max(9, ...list.map(x => x.ore));
-  return '<div class="mbars" style="grid-template-columns:repeat(' + list.length + ',1fr)" role="img" aria-label="Ore di sonno">' + list.map(x => '<span title="' + esc(fmtD(parseDate(x.data))) + ': ' + fmtOre(x.ore) + '"><i style="height:' + Math.round(x.ore / mx * 100) + '%;background:' + (x.ore >= 7 ? 'var(--ok)' : x.ore >= 6 ? 'var(--warn)' : 'var(--accent)') + '"></i><b style="bottom:' + Math.round(7 / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>' + esc(fmtD(parseDate(list[0].data))) + '</span><span>linea: 7 ore</span><span>oggi</span></div>';
+  return '<div class="mbars" style="grid-template-columns:repeat(' + list.length + ',1fr)" role="img" aria-label="Ore di sonno">' + list.map(x => '<span title="' + esc(fmtD(parseDate(x.data))) + ': ' + fmtOre(x.ore) + '"><i style="height:' + Math.round(x.ore / mx * 100) + '%;background:' + (x.ore >= 7 ? 'var(--ok)' : x.ore >= 6 ? 'var(--warn)' : 'var(--hot)') + '"></i><b style="bottom:' + Math.round(7 / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>' + esc(fmtD(parseDate(list[0].data))) + '</span><span>linea: 7 ore</span><span>oggi</span></div>';
 }
 function mattinoCard(){
   if (S.profilo.ruolo === 'manager') return ''; const m = mattinoOggi(); const h = new Date().getHours();
@@ -3178,7 +3316,7 @@ async function archiviaGo(){
 function memoriaCard(){
   const p = lsPct(); if (!UI.lsPieno && p < 70) return '';
   const I = archiviaInfo(); const can = I.chars > 20000;
-  return '<div class="card" style="border:2px solid ' + (UI.lsPieno ? 'var(--accent)' : 'var(--warn)') + '"><span style="font-weight:800">' + (UI.lsPieno ? 'Memoria del telefono piena' : 'Memoria del telefono quasi piena') + (p >= 50 ? ' · ' + Math.min(100, p) + '%' : '') + '</span><span class="small" style="line-height:1.5">'
+  return '<div class="card" style="border:2px solid ' + (UI.lsPieno ? 'var(--hot)' : 'var(--warn)') + '"><span style="font-weight:800">' + (UI.lsPieno ? 'Memoria del telefono piena' : 'Memoria del telefono quasi piena') + (p >= 50 ? ' · ' + Math.min(100, p) + '%' : '') + '</span><span class="small" style="line-height:1.5">'
     + (Store.cloud ? 'I tuoi dati sono al sicuro nel tuo account. Sul telefono ne tengo una copia per usare l\'app anche offline: archiviando i mesi vecchi libero spazio senza perdere niente.' : 'I dati sono salvati solo in questo browser, che ha circa 5 MB. ' + (UI.lsPieno ? 'Gli ultimi inserimenti potrebbero non essere stati salvati. ' : '') + 'Salva una copia completa, poi archivia: foto dei pasti più vecchie di 2 mesi e alimentazione più vecchia di 6 mesi escono dal telefono, ma restano nella copia e puoi ripristinarle.')
     + '</span><div class="grid2">' + (Store.cloud ? '' : '<button type="button" class="btn sm" data-a="saveexp">Salva una copia</button>') + '<button type="button" class="btn sm dark"' + (can ? '' : ' disabled') + ' data-a="archivia">' + (can ? 'Archivia mesi vecchi' : 'Niente da archiviare') + '</button></div></div>';
 }
@@ -3753,7 +3891,7 @@ function nBars(R){
   const mx = Math.max(1, ...R.days.map(d => Math.max(d.t.kcal, d.T ? d.T.kcal : 0))); const fitti = R.n > 10; const oggi = isoDate(new Date());
   return '<div class="nbars' + (fitti ? ' fitti' : '') + '" style="grid-template-columns:repeat(' + R.n + ',minmax(0,1fr))">' + R.days.map(d => { const T = d.T ? d.T.kcal : 0; const st = !d.has ? 'vuoto' : !d.completo ? 'parz' : !T ? 'ok' : d.t.kcal > T * 1.1 ? 'over' : d.t.kcal < T * 0.9 ? 'under' : 'ok'; const dd = parseDate(d.ds);
     return '<button type="button" class="nbar ' + st + (d.ds === oggi ? ' oggi' : '') + '" data-a="ngiorno" data-v="' + d.ds + '" aria-label="' + esc(fmtD(dd)) + ': ' + (d.has ? fmtK(d.t.kcal) + ' kcal' + (T ? ' su ' + fmtK(T) : '') : 'nessun pasto registrato') + '"><span class="col">' + (T ? '<b style="bottom:' + (T / mx * 100).toFixed(1) + '%"></b>' : '') + '<i style="height:' + (d.has ? Math.max(3, d.t.kcal / mx * 100).toFixed(1) : 0) + '%"></i></span><span class="lab">' + (fitti ? (dd.getDate() === 1 || d === R.days[0] || dd.getDay() === 1 ? dd.getDate() : '') : GG[dd.getDay()].charAt(0).toUpperCase() + '<br>' + dd.getDate()) + '</span></button>'; }).join('') + '</div>'
-    + '<div class="legend" style="flex-wrap:wrap;gap:6px 12px"><span><i style="background:var(--ok)"></i>in obiettivo</span><span><i style="background:var(--accent)"></i>sopra</span><span><i style="background:var(--p)"></i>sotto</span><span><i style="background:var(--line)"></i>giornata incompleta</span><span style="margin-left:auto">— obiettivo</span></div>';
+    + '<div class="legend" style="flex-wrap:wrap;gap:6px 12px"><span><i style="background:var(--ok)"></i>in obiettivo</span><span><i style="background:var(--hot)"></i>sopra</span><span><i style="background:var(--p)"></i>sotto</span><span><i style="background:var(--line)"></i>giornata incompleta</span><span style="margin-left:auto">— obiettivo</span></div>';
 }
 function nTopCibi(R, key){ const m = {}; let tot = 0; R.C.forEach(d => d.items.forEach(i => { if (i.fonte === 'integratore') return; const v = +i[key] || 0; if (!(v > 0)) return; const k = String(i.nome || '').trim().toLowerCase(); if (!k) return; (m[k] = m[k] || { nome: i.nome, v: 0, n: 0 }).v += v; m[k].n++; tot += v; })); return { tot, list: Object.keys(m).map(k => m[k]).sort((a, b) => b.v - a.v).slice(0, 5) }; }
 function nSintesi(R, P){
@@ -4031,7 +4169,7 @@ function fanChart(band, unit, lab, abs){
   const area = band.map((b, i) => X(i) + ',' + Y(b.p90)).join(' ') + ' ' + band.slice().reverse().map((b, i) => X(n - i) + ',' + Y(b.p10)).join(' ');
   const ticks = [mn, (mn + mx) / 2, mx];
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fan" role="img" aria-label="' + esc(lab) + '">' + ticks.map(v => '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/><text x="' + (pl - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + fmtN(Math.abs(v) < 0.05 ? 0 : v, abs ? 0 : 1) + '</text>').join('')
-    + '<polygon points="' + area + '" fill="var(--accent)" fill-opacity="0.16"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5"/>'
+    + '<polygon points="' + area + '" fill="var(--chart)" fill-opacity="0.16"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--chart)" stroke-width="2.5"/>'
     + [0, 3, 6, 9, 12].filter(m => m <= n).map(m => '<text x="' + X(m) + '" y="' + (H - 6) + '" text-anchor="' + (m === 0 ? 'start' : m === n ? 'end' : 'middle') + '" font-size="10" fill="var(--muted)">' + (m === 0 ? 'oggi' : m + ' mesi') + '</text>').join('') + '</svg>';
 }
 function kgS(v){ return (v >= 0 ? '+' : '−') + fmtN(Math.abs(v), 1); }
@@ -4056,10 +4194,10 @@ function formaChart(M){
   const X = i => pl + (W - pl - pr) * i / n, Y = v => pt + (H - pt - pb) * (1 - v / mx); const cut = M.hist.length - 1;
   const line = (k, from, to) => all.slice(from, to + 1).map((h, i) => X(from + i) + ',' + Y(h[k])).join(' ');
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fan" role="img" aria-label="Forma e fatica, ultime 6 settimane e prossime 2"><rect x="' + X(cut) + '" y="' + pt + '" width="' + (X(n) - X(cut)) + '" height="' + (H - pt - pb) + '" fill="var(--soft)"/>'
-    + '<polyline points="' + line('ctl', 0, cut) + '" fill="none" stroke="var(--accent)" stroke-width="2.5"/><polyline points="' + line('ctl', cut, n) + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 4"/>'
+    + '<polyline points="' + line('ctl', 0, cut) + '" fill="none" stroke="var(--chart)" stroke-width="2.5"/><polyline points="' + line('ctl', cut, n) + '" fill="none" stroke="var(--chart)" stroke-width="2.5" stroke-dasharray="4 4"/>'
     + '<polyline points="' + line('atl', 0, cut) + '" fill="none" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".55"/><polyline points="' + line('atl', cut, n) + '" fill="none" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".55" stroke-dasharray="4 4"/>'
     + '<text x="' + X(cut) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="var(--muted)">oggi</text><text x="' + X(0) + '" y="' + (H - 6) + '" font-size="10" fill="var(--muted)">6 settimane fa</text><text x="' + X(n) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10" fill="var(--muted)">+2 settimane</text></svg>'
-    + '<div class="row start tiny muted" style="gap:14px"><span><b style="color:var(--accent)">━</b> forma (si costruisce in settimane)</span><span><b style="opacity:.6">━</b> fatica (passa in pochi giorni)</span></div>';
+    + '<div class="row start tiny muted" style="gap:14px"><span><b style="color:var(--accent-tx)">━</b> forma (si costruisce in settimane)</span><span><b style="opacity:.6">━</b> fatica (passa in pochi giorni)</span></div>';
 }
 function kgTxt(v){ return (v >= 0 ? '+' : '−') + fmtN(Math.abs(v), 1) + ' kg'; }
 SCREENS.previsioni = function(){
@@ -4899,7 +5037,7 @@ function rottaCard(I, sim){
   const X = w => pl + (W - pl - pr) * w / wMax, Y = v => pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn));
   const area = band.map((b, i) => X(i) + ',' + Y(b.p90)).join(' ') + ' ' + band.slice().reverse().map((b, i) => X(wMax - i) + ',' + Y(b.p10)).join(' ');
   const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fan" role="img" aria-label="Il tuo peso settimana per settimana sulla fascia prevista">' + [mn, (mn + mx) / 2, mx].map(v => '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/><text x="' + (pl - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + fmtN(v, 0) + '</text>').join('')
-    + '<polygon points="' + area + '" fill="var(--accent)" fill-opacity="0.14"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/>'
+    + '<polygon points="' + area + '" fill="var(--chart)" fill-opacity="0.14"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--chart)" stroke-width="1.5" stroke-dasharray="4 3"/>'
     + pts.map(p => '<circle cx="' + X(p.w) + '" cy="' + Y(p.v) + '" r="3.5" fill="var(--fg)"/>').join('')
     + '<text x="' + pl + '" y="' + (H - 4) + '" font-size="10" fill="var(--muted)">' + esc(fmtD(parseDate(R.da))) + '</text><text x="' + (W - pr) + '" y="' + (H - 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">settimana ' + wMax + '</text></svg>';
   const col = !st ? 'var(--muted)' : st.k === 'ok' ? 'var(--ok)' : st.k === 'nodata' ? 'var(--muted)' : 'var(--warn)';
@@ -5194,7 +5332,7 @@ function limInfo(o){
 }
 function miniBars(serie){
   const s = serie.map(x => x || { n: 0, lim: 0, ds: '', none: 1 }); const mx = Math.max(1, ...s.map(x => Math.max(x.n, x.lim)));
-  return '<div class="mbars" role="img" aria-label="Ultimi 14 giorni">' + s.map(x => x.none ? '<span class="none"></span>' : '<span title="' + esc(fmtD(parseDate(x.ds))) + ': ' + fmtN(x.n) + '"><i style="height:' + Math.round(x.n / mx * 100) + '%;background:' + (x.n > x.lim ? 'var(--accent)' : 'var(--ok)') + '"></i><b style="bottom:' + Math.round(x.lim / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>14 giorni fa</span><span>linea tratteggiata: il limite</span><span>oggi</span></div>';
+  return '<div class="mbars" role="img" aria-label="Ultimi 14 giorni">' + s.map(x => x.none ? '<span class="none"></span>' : '<span title="' + esc(fmtD(parseDate(x.ds))) + ': ' + fmtN(x.n) + '"><i style="height:' + Math.round(x.n / mx * 100) + '%;background:' + (x.n > x.lim ? 'var(--hot)' : 'var(--ok)') + '"></i><b style="bottom:' + Math.round(x.lim / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>14 giorni fa</span><span>linea tratteggiata: il limite</span><span>oggi</span></div>';
 }
 function durata(h){ return h < 1 ? Math.round(h * 60) + ' minuti' : h < 48 ? Math.round(h) + ' ore' : Math.floor(h / 24) + ' giorni'; }
 function limTrigChips(o){
@@ -5366,8 +5504,8 @@ SCREENS.clienti = function(){
     h += '<div class="hstat" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="card" style="padding:10px 12px;gap:2px"><span class="tiny muted">Clienti</span><b class="mono" style="font-size:20px">' + man.length + '</b></div><div class="card" style="padding:10px 12px;gap:2px"><span class="tiny muted">Lezioni settimana</span><b class="mono" style="font-size:20px">' + Math.max(lw, sw) + '</b></div><div class="card" style="padding:10px 12px;gap:2px' + (ren ? ';border-color:var(--accent)' : '') + '"><span class="tiny muted">Da rinnovare</span><b class="mono" style="font-size:20px' + (ren ? ';color:var(--accent-deep)' : '') + '">' + ren + '</b></div></div>'; }
   h += '<div class="card"><div class="row"><h2>I tuoi clienti</h2><span class="chip">' + man.length + '</span></div>';
   if (!man.length) h += '<div class="empty">Aggiungi anche chi non usa l\'app: anamnesi del colloquio, questionario di salute, lezioni, misure e note. Tutto resta nel tuo account, visibile solo a te.</div>';
-  else h += '<div class="list">' + man.map(c => { const pk = cliPkg(c); const last = cliLast(c); const al = cliAlerts(c); const age = ageFrom(c.nascita); const nx = cliNext(c); const st = al.some(a => a[0] === 'acc') ? 'var(--accent)' : al.length ? 'var(--warn)' : 'var(--ok)';
-    return '<button type="button" class="clirow" data-name="' + esc(cliNome(c).toLowerCase()) + '" data-a="go" data-r="clientept" data-id="' + c.id + '"><span class="cav" style="background:' + cliColor(c) + '">' + initials(cliNome(c)) + '<i style="background:' + st + '"></i></span><span class="stack" style="flex:1;gap:2px;min-width:0"><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(cliNome(c)) + (c.appUid ? ' <span class="chip ok" style="font-size:10px;padding:2px 6px">app</span>' : '') + '</span><span class="tiny muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc([c.obiettivo ? lab(ANAM.find(x => x.k === 'obiettivo').o, c.obiettivo) : '', age ? age + ' anni' : '', nx ? 'prossima: ' + nx.g.nome : 'senza scheda'].filter(Boolean).join(' · ')) + '</span><span class="tiny muted">' + esc(last ? 'ultima lezione ' + fmtD(parseDate(last)) : 'nessuna lezione ancora') + '</span></span>' + (pk.tot ? '<span class="pkmini"><span class="mono" style="font-weight:700;font-size:13px">' + pk.left + '<span class="muted" style="font-weight:400">/' + pk.tot + '</span></span><span class="bar" style="height:4px"><span style="width:' + Math.round(pk.left / pk.tot * 100) + '%' + (pk.left <= 1 ? ';background:var(--accent)' : '') + '"></span></span></span>' : '') + ic('chev', 16) + '</button>'; }).join('') + '</div>';
+  else h += '<div class="list">' + man.map(c => { const pk = cliPkg(c); const last = cliLast(c); const al = cliAlerts(c); const age = ageFrom(c.nascita); const nx = cliNext(c); const st = al.some(a => a[0] === 'acc') ? 'var(--hot)' : al.length ? 'var(--warn)' : 'var(--ok)';
+    return '<button type="button" class="clirow" data-name="' + esc(cliNome(c).toLowerCase()) + '" data-a="go" data-r="clientept" data-id="' + c.id + '"><span class="cav" style="background:' + cliColor(c) + '">' + initials(cliNome(c)) + '<i style="background:' + st + '"></i></span><span class="stack" style="flex:1;gap:2px;min-width:0"><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(cliNome(c)) + (c.appUid ? ' <span class="chip ok" style="font-size:10px;padding:2px 6px">app</span>' : '') + '</span><span class="tiny muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc([c.obiettivo ? lab(ANAM.find(x => x.k === 'obiettivo').o, c.obiettivo) : '', age ? age + ' anni' : '', nx ? 'prossima: ' + nx.g.nome : 'senza scheda'].filter(Boolean).join(' · ')) + '</span><span class="tiny muted">' + esc(last ? 'ultima lezione ' + fmtD(parseDate(last)) : 'nessuna lezione ancora') + '</span></span>' + (pk.tot ? '<span class="pkmini"><span class="mono" style="font-weight:700;font-size:13px">' + pk.left + '<span class="muted" style="font-weight:400">/' + pk.tot + '</span></span><span class="bar" style="height:4px"><span style="width:' + Math.round(pk.left / pk.tot * 100) + '%' + (pk.left <= 1 ? ';background:var(--hot)' : '') + '"></span></span></span>' : '') + ic('chev', 16) + '</button>'; }).join('') + '</div>';
   h += '</div>';
   h += '<div class="card"><div class="row"><h2>Clienti nell\'app</h2><span class="chip">' + app.length + '</span></div>';
   if (!app.length) h += '<div class="empty">Appena qualcuno inserisce il tuo codice compare qui con livello, ultimo allenamento e lezioni rimaste.</div>';
@@ -5516,7 +5654,7 @@ SCREENS.approvazioni = function(){
   const pend = SH.ap.filter(a => a.stato === 'in_attesa').sort((a, b) => a.creato - b.creato);
   if (!pend.length) h += '<div class="empty">Tutto approvato. Ore, vendite e sostituzioni dello staff compaiono qui man mano.</div>';
   pend.forEach(a => { const s = apSummary(a); const blocked = a.tipo === 'vendita' && !(a.dettaglio || {}).pagata;
-    h += '<div class="card"><div class="row"><span class="chip ' + s.cls + '">' + esc(s.lab) + '</span><span class="tiny muted">' + esc(fmtD(a.creato)) + '</span></div><div class="stack"><span style="font-weight:700">' + esc(staffName(a.autore)) + ' · ' + esc((ROLE_LABEL[a.ruolo] || '').split(' ')[0]) + '</span><span>' + esc(s.t) + '</span><span class="small ' + (blocked ? '' : 'muted') + '" style="' + (blocked ? 'color:var(--accent);font-weight:600' : '') + '">' + esc(s.s) + '</span></div><div class="grid2"><button type="button" class="btn sm" data-a="decide" data-id="' + esc(a._id) + '" data-v="rifiutata">Rifiuta</button><button type="button" class="btn sm dark" data-a="decide" data-id="' + esc(a._id) + '" data-v="approvata">' + (a.tipo === 'vendita' ? 'Conferma' : 'Approva') + '</button></div></div>'; });
+    h += '<div class="card"><div class="row"><span class="chip ' + s.cls + '">' + esc(s.lab) + '</span><span class="tiny muted">' + esc(fmtD(a.creato)) + '</span></div><div class="stack"><span style="font-weight:700">' + esc(staffName(a.autore)) + ' · ' + esc((ROLE_LABEL[a.ruolo] || '').split(' ')[0]) + '</span><span>' + esc(s.t) + '</span><span class="small ' + (blocked ? '' : 'muted') + '" style="' + (blocked ? 'color:var(--accent-tx);font-weight:600' : '') + '">' + esc(s.s) + '</span></div><div class="grid2"><button type="button" class="btn sm" data-a="decide" data-id="' + esc(a._id) + '" data-v="rifiutata">Rifiuta</button><button type="button" class="btn sm dark" data-a="decide" data-id="' + esc(a._id) + '" data-v="approvata">' + (a.tipo === 'vendita' ? 'Conferma' : 'Approva') + '</button></div></div>'; });
   const done = SH.ap.filter(a => a.stato !== 'in_attesa').sort((a, b) => (b.deciso || 0) - (a.deciso || 0)).slice(0, 15);
   if (done.length) { h += '<button type="button" class="btn" data-a="toggledone">' + (UI.showDone ? 'Nascondi' : 'Mostra') + ' le ultime decise</button>';
     if (UI.showDone) h += '<div class="card"><div class="list">' + done.map(a => { const s = apSummary(a); return '<div class="li"><span class="grow"><span class="title">' + esc(staffName(a.autore)) + ' · ' + esc(s.lab) + '</span><span class="small muted">' + esc(s.t) + '</span></span>' + statusChip(a.stato) + '</div>'; }).join('') + '</div></div>'; }
@@ -5573,7 +5711,7 @@ function renderStaffWait(){
   const txt = rev ? 'Il responsabile di Delta Coach ha disattivato il tuo accesso come staff. Se pensi sia un errore, scrivigli: può riattivarti in un attimo.'
     : m ? 'Hai chiesto di entrare come ' + ROLE_LABEL[m.ruolo].toLowerCase() + '. Il responsabile di Delta Coach deve approvare il tuo account: appena lo fa, tocca «Controlla di nuovo»' + (m.ruolo === 'pt' ? ' e trovi il codice da dare ai tuoi clienti.' : '.')
     : 'Per usare l\'app come staff inserisci il codice di accesso che ti ha dato il responsabile di Delta Coach.';
-  let h = '<div class="screen notab" style="gap:18px"><div class="row start" style="gap:10px"><span class="avatar" style="background:var(--fg);color:var(--bg);border:0;border-radius:12px">Δ</span><span style="font-weight:800;letter-spacing:.02em">Delta Coach</span></div>';
+  let h = '<div class="screen notab" style="gap:18px"><div class="row start brand" style="gap:10px"><span class="brandmark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3.2 21.6 20.4H2.4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg></span><span class="brandname">Delta Coach</span></div>';
   h += '<div class="card"><span class="eyebrow">Accesso staff</span><h2>' + tit + '</h2><span class="small" style="line-height:1.5">' + txt + '</span>'
     + (m && !rev ? '<button type="button" class="btn pri wide" data-a="dcrecheck">Controlla di nuovo</button>' : '')
     + (!m ? '<button type="button" class="btn pri wide" data-a="staffredo">Inserisci il codice</button>' : '') + '</div>';

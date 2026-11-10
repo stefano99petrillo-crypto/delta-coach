@@ -729,7 +729,7 @@ function radarSVG(st, game){
   const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
   const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
   const P = a => a.map(v => v.toFixed(1)).join(',');
-  const col = game ? 'var(--g-lime)' : 'var(--accent)', line = game ? 'var(--g-line)' : 'var(--line)', fg = game ? 'var(--g-fg)' : 'var(--fg)', mu = game ? 'var(--g-muted)' : 'var(--muted)';
+  const col = game ? 'var(--g-lime)' : 'var(--chart)', line = game ? 'var(--g-line)' : 'var(--line)', fg = game ? 'var(--g-fg)' : 'var(--fg)', mu = game ? 'var(--g-muted)' : 'var(--muted)';
   let h = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Profilo: ' + esc(STATS.map(s => s[1] + ' ' + (st[s[0]] == null ? 'non misurata' : st[s[0]])).join(', ')) + '" style="display:block;max-width:380px;margin:0 auto">';
   h += '<g transform="translate(' + cx + ' ' + (cy + 2) + ') scale(0.6)" fill="' + fg + '" stroke="' + fg + '" stroke-width="6" stroke-linejoin="round" opacity="0.09">' + BODY + '</g>';
   [0.25, 0.5, 0.75, 1].forEach(f => { h += '<polygon points="' + STATS.map((s, i) => P(pt(i, R * f))).join(' ') + '" fill="none" stroke="' + line + '" stroke-width="' + (f === 1 ? 1.5 : 1) + '"/>'; });
@@ -1482,7 +1482,7 @@ function lineChart(pts, unit){
   const top = mx - padv, bot = mn + padv;
   const lab = v => (Math.round(v * 10) / 10).toLocaleString('it-IT');
   const first = pts[0], last = pts[pts.length - 1];
-  return '<svg role="img" aria-label="Andamento da ' + lab(first.y) + ' a ' + lab(last.y) + ' ' + esc(unit) + '" viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;color:var(--accent)">'
+  return '<svg role="img" aria-label="Andamento da ' + lab(first.y) + ' a ' + lab(last.y) + ' ' + esc(unit) + '" viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;color:var(--accent-tx)">'
     + '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(top).toFixed(1) + '" y2="' + Y(top).toFixed(1) + '" stroke="var(--line)"/>'
     + '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(bot).toFixed(1) + '" y2="' + Y(bot).toFixed(1) + '" stroke="var(--line)"/>'
     + '<text x="' + (pl - 6) + '" y="' + (Y(top) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono, monospace">' + lab(top) + '</text>'
@@ -1545,7 +1545,7 @@ async function loadFor(r){
 }
 
 /* ---------- render ---------- */
-const app = $('#app');
+const app = $('#app'); let LAST_SHEET_K = null;
 function render(){
   if (!S) return; AUTOC = null;
   const r = UI.route; let html = '';
@@ -1562,7 +1562,8 @@ function render(){
     if (LIVE && logged && !(r === 'sessione') && !staffBlocked()) html = html.replace(/<div class="screen[^"]*"[^>]*>/, m => m + liveBar());
   } catch(e) { console.error(e); html = '<div class="screen"><div class="empty">Questa schermata ha avuto un problema. <button class="link" data-a="go" data-r="' + ROOT_ROUTES[role || 'cliente'] + '">Torna all\'inizio</button></div></div>'; }
   if (UI.sheet) { let sh = ''; try { sh = renderSheet(); if (['esercizio', 'sessedit', 'rinomina'].indexOf(UI.sheet.k) >= 0) sh += exDatalist(); } catch(e) { console.error(e); sh = '<p>Problema in questo pannello.</p><button type="button" class="btn" data-a="closesheet">Chiudi</button>'; }
-    html += '<div class="scrim" data-a="closesheet"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + sh + '</div></div>'; }
+    html += '<div class="scrim' + (LAST_SHEET_K !== UI.sheet.k ? ' fresh' : '') + '" data-a="closesheet"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + sh + '</div></div>'; }
+  LAST_SHEET_K = UI.sheet ? UI.sheet.k : null;
   const active = document.activeElement; const keepId = active && active.id && app.contains(active) ? active.id : null;
   app.innerHTML = html;
   if (keepId) { const el = document.getElementById(keepId); if (el) { try { el.focus({ preventScroll: true }); } catch(e){} } }
@@ -1580,7 +1581,7 @@ function topbar(eyebrow, title, opts){
   opts = opts || {};
   const left = opts.back ? '<button type="button" class="avatar" data-a="go" data-r="' + opts.back + '" aria-label="Indietro">' + ic('back', 18) + '</button>' : '';
   return '<div class="topbar"><div class="row start" style="gap:10px;min-width:0">' + left + '<div class="t">' + (eyebrow ? '<span class="eyebrow">' + esc(eyebrow) + '</span>' : '') + '<h1>' + esc(title) + '</h1></div></div>'
-    + (opts.noProfile ? '' : '<button type="button" class="avatar" data-a="go" data-r="profilo" aria-label="Profilo e impostazioni">' + initials(S.profilo.nome) + '</button>') + '</div>';
+    + (opts.noProfile ? '' : '<button type="button" class="avatar me" data-a="go" data-r="profilo" aria-label="Profilo e impostazioni">' + initials(S.profilo.nome) + '</button>') + '</div>';
 }
 function todayLabel(){ const d = new Date(); return GGL[d.getDay()] + ' ' + d.getDate() + ' ' + MML[d.getMonth()]; }
 
@@ -1613,7 +1614,7 @@ function renderLogin(){
       + '<button class="btn pri wide" type="submit">Entra come ' + ROLE_LABEL[L.role].toLowerCase() + '</button></form>'
       + '<div style="margin-top:auto;border-top:1px solid var(--line);padding-top:16px"><button type="button" class="btn wide" data-a="loginmode" data-m="cliente">' + ic('back', 18) + ' Sono un cliente</button></div>';
   }
-  return '<div class="screen notab" style="gap:18px"><div class="row start" style="gap:10px"><span class="avatar" style="background:var(--fg);color:var(--bg);border:0;border-radius:12px">Δ</span><span style="font-weight:800;letter-spacing:.02em">Delta Coach</span></div>' + body + '</div>';
+  return '<div class="screen notab" style="gap:18px"><div class="row start brand" style="gap:10px"><span class="brandmark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3.2 21.6 20.4H2.4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg></span><span class="brandname">Delta Coach</span></div>' + body + '</div>';
 }
 function genderPills(cur){ return [['m','maschile'],['f','femminile'],['n','neutro']].map(g => '<button type="button" class="pill" data-a="setgender" data-v="' + g[0] + '" aria-pressed="' + (cur === g[0]) + '">' + g[1] + '</button>').join(''); }
 
@@ -1914,7 +1915,7 @@ async function effettiGo(){
 
 function liveBanner(){ return ''; }
 function liveBar(){ const c = LIVE.cid && CLI[LIVE.cid]; const fatte = LIVE.ex.reduce((a, e) => a + e.serie.filter(x => x.ok && !x.skip).length, 0), tot = LIVE.ex.reduce((a, e) => a + e.serie.filter(x => !x.skip).length, 0);
-  return '<button type="button" class="card livebar" style="flex-direction:row;align-items:center;border:2px solid var(--accent)" data-a="go" data-r="sessione"><span class="stack" style="flex:1;min-width:0"><span class="eyebrow" style="color:var(--accent)">' + (LIVE.bg ? 'Allenamento in pausa' : 'Allenamento in corso') + (c ? ' · con ' + esc(c.nome || 'cliente') : '') + '</span><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(LIVE.giorno) + '</span><span class="tiny muted mono"><span data-elapsed="1">' + elapsedStr() + '</span> · ' + fatte + ' serie su ' + tot + '</span></span><span class="btn pri sm">Riprendi</span></button>'; }
+  return '<button type="button" class="card ink livebar" style="flex-direction:row;align-items:center" data-a="go" data-r="sessione"><span class="livedot" aria-hidden="true"></span><span class="stack" style="flex:1;min-width:0"><span class="eyebrow">' + (LIVE.bg ? 'Allenamento in pausa' : 'Allenamento in corso') + (c ? ' · con ' + esc(c.nome || 'cliente') : '') + '</span><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(LIVE.giorno) + '</span><span class="tiny muted mono"><span data-elapsed="1">' + elapsedStr() + '</span> · ' + fatte + ' serie su ' + tot + '</span></span><span class="btn pri sm">Riprendi</span></button>'; }
 function nutriMini(){
   const t = targetFor(isoDate(new Date())); const tot = sumItems(foodFor(isoDate(new Date())));
   return '<button type="button" class="card" data-a="go" data-r="nutrizione"><div class="row"><span class="eyebrow">Alimentazione di oggi</span>' + ic('chev', 18) + '</div>'
@@ -2062,7 +2063,7 @@ SCREENS.allenati = function(){
     sc.giorni.forEach((g, gi) => { const isNext = nd && nd.id === g.id; const ld = lastDone(g.id); const mus = muscoliDi(g);
       h += '<div class="card' + (isNext ? ' nextc' : '') + '"><div class="row start" style="gap:12px;align-items:flex-start"><span class="dbadge' + (isNext ? ' on' : '') + '">' + String.fromCharCode(65 + gi) + '</span><div class="stack" style="flex:1"><span style="font-weight:700;font-size:16px;line-height:1.25">' + esc(g.nome) + '</span><span class="small muted">' + g.esercizi.length + ' esercizi · ' + serieTot(g) + ' serie · ~' + durataStimata(g) + ' min</span>' + (mus.length ? '<div class="mchips" style="margin-top:4px">' + mus.map(m => '<span class="chip">' + m + '</span>').join('') + '</div>' : '') + '</div></div>'
         + (g.esercizi.length ? '<div class="exl">' + g.esercizi.slice(0, 4).map(e => '<span class="n">' + esc(e.nome) + '</span><span class="s">' + exFmt(e) + '</span>').join('') + '</div>' + (g.esercizi.length > 4 ? '<span class="tiny muted">e altri ' + (g.esercizi.length - 4) + '</span>' : '') : '<span class="small muted">Nessun esercizio: aggiungili in Modifica.</span>')
-        + '<div class="row" style="border-top:1px solid var(--line);padding-top:10px"><span class="tiny muted">' + (isNext ? '<span style="color:var(--accent);font-weight:700">La prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span><button type="button" class="btn sm ' + (isNext ? 'pri' : 'dark') + '" data-a="startday" data-id="' + g.id + '">Inizia</button></div></div>'; });
+        + '<div class="row" style="border-top:1px solid var(--line);padding-top:10px"><span class="tiny muted">' + (isNext ? '<span style="color:var(--accent-tx);font-weight:700">La prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span><button type="button" class="btn sm ' + (isNext ? 'pri' : 'dark') + '" data-a="startday" data-id="' + g.id + '">Inizia</button></div></div>'; });
   }
   h += exSection();
   h += '<div class="qbtns"><button type="button" class="qbtn" data-a="sheet" data-k="nuovascheda">' + ic('plus', 20) + 'Nuova scheda</button>' + (CLX ? '' : '<button type="button" class="qbtn" data-a="sheet" data-k="attivita">' + ic('plus', 20) + 'Altra attività</button>') + '<button type="button" class="qbtn" data-a="go" data-r="scheda">' + ic('edit', 20) + 'Modifica scheda</button><button type="button" class="qbtn" data-a="sheet" data-k="import">' + ic('upload', 20) + 'Carica scheda</button></div>';
@@ -2550,7 +2551,7 @@ function clTabAllenamenti(c){
     h += '<div class="card"><div class="row"><span class="eyebrow">' + (one ? 'Seduta' : 'Scegli la seduta di oggi') + '</span>' + (LIVE && !live ? '<span class="tiny muted">hai già un allenamento in corso</span>' : '') + '</div>';
     SC.forEach(sc => { if (SC.length > 1) h += '<span class="tiny muted" style="font-weight:700;padding-top:4px">' + esc(sc.nome || 'Scheda') + (sc.id === nx.sc.id ? ' · scheda attiva' : '') + '</span>';
       sc.giorni.forEach((g, gi) => { if (!(g.esercizi || []).length) return; const isNext = g.id === nx.g.id; const ld = lastOf[g.id];
-        h += '<div class="stack" style="gap:8px;padding:10px 0;border-top:1px solid var(--line)"><div class="row start" style="align-items:flex-start"><span class="dbadge' + (isNext ? ' on' : '') + '">' + String.fromCharCode(65 + gi % 26) + '</span><div class="stack" style="flex:1"><span style="font-weight:700;line-height:1.25">' + esc(g.nome) + '</span><span class="tiny muted">' + g.esercizi.length + ' esercizi · ' + (isNext ? '<span style="color:var(--accent);font-weight:700">la prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span></div>'
+        h += '<div class="stack" style="gap:8px;padding:10px 0;border-top:1px solid var(--line)"><div class="row start" style="align-items:flex-start"><span class="dbadge' + (isNext ? ' on' : '') + '">' + String.fromCharCode(65 + gi % 26) + '</span><div class="stack" style="flex:1"><span style="font-weight:700;line-height:1.25">' + esc(g.nome) + '</span><span class="tiny muted">' + g.esercizi.length + ' esercizi · ' + (isNext ? '<span style="color:var(--accent-tx);font-weight:700">la prossima in programma</span> · ' : '') + (ld ? 'ultima volta ' + agoStr(ld) : 'mai fatta') + '</span></div>'
           + (live === g.id ? '<button type="button" class="btn sm pri" data-a="go" data-r="sessione">Riprendi</button>' : '<button type="button" class="btn sm ' + (isNext ? 'pri' : 'dark') + '" data-a="clstart" data-cid="' + c.id + '" data-id="' + g.id + '">Inizia</button>') + '</div>'
           + (isNext ? '<div class="exl">' + g.esercizi.slice(0, 6).map(e => '<span class="n">' + esc(e.nome) + '</span><span class="s">' + exFmt(e) + '</span>').join('') + '</div>' + (g.esercizi.length > 6 ? '<span class="tiny muted">e altri ' + (g.esercizi.length - 6) + '</span>' : '') : '') + '</div>'; }); });
     h += '<span class="tiny muted" style="line-height:1.4">Puoi iniziare la seduta che vuoi: la successiva in programma riparte da quella che fate oggi.</span></div>'; }
@@ -2617,7 +2618,7 @@ function mattinoInsights(m){
 }
 function sonnoBars(list){
   if (!list.length) return ''; const mx = Math.max(9, ...list.map(x => x.ore));
-  return '<div class="mbars" style="grid-template-columns:repeat(' + list.length + ',1fr)" role="img" aria-label="Ore di sonno">' + list.map(x => '<span title="' + esc(fmtD(parseDate(x.data))) + ': ' + fmtOre(x.ore) + '"><i style="height:' + Math.round(x.ore / mx * 100) + '%;background:' + (x.ore >= 7 ? 'var(--ok)' : x.ore >= 6 ? 'var(--warn)' : 'var(--accent)') + '"></i><b style="bottom:' + Math.round(7 / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>' + esc(fmtD(parseDate(list[0].data))) + '</span><span>linea: 7 ore</span><span>oggi</span></div>';
+  return '<div class="mbars" style="grid-template-columns:repeat(' + list.length + ',1fr)" role="img" aria-label="Ore di sonno">' + list.map(x => '<span title="' + esc(fmtD(parseDate(x.data))) + ': ' + fmtOre(x.ore) + '"><i style="height:' + Math.round(x.ore / mx * 100) + '%;background:' + (x.ore >= 7 ? 'var(--ok)' : x.ore >= 6 ? 'var(--warn)' : 'var(--hot)') + '"></i><b style="bottom:' + Math.round(7 / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>' + esc(fmtD(parseDate(list[0].data))) + '</span><span>linea: 7 ore</span><span>oggi</span></div>';
 }
 function mattinoCard(){
   if (S.profilo.ruolo === 'manager') return ''; const m = mattinoOggi(); const h = new Date().getHours();
@@ -2728,7 +2729,7 @@ async function archiviaGo(){
 function memoriaCard(){
   const p = lsPct(); if (!UI.lsPieno && p < 70) return '';
   const I = archiviaInfo(); const can = I.chars > 20000;
-  return '<div class="card" style="border:2px solid ' + (UI.lsPieno ? 'var(--accent)' : 'var(--warn)') + '"><span style="font-weight:800">' + (UI.lsPieno ? 'Memoria del telefono piena' : 'Memoria del telefono quasi piena') + (p >= 50 ? ' · ' + Math.min(100, p) + '%' : '') + '</span><span class="small" style="line-height:1.5">'
+  return '<div class="card" style="border:2px solid ' + (UI.lsPieno ? 'var(--hot)' : 'var(--warn)') + '"><span style="font-weight:800">' + (UI.lsPieno ? 'Memoria del telefono piena' : 'Memoria del telefono quasi piena') + (p >= 50 ? ' · ' + Math.min(100, p) + '%' : '') + '</span><span class="small" style="line-height:1.5">'
     + (Store.cloud ? 'I tuoi dati sono al sicuro nel tuo account. Sul telefono ne tengo una copia per usare l\'app anche offline: archiviando i mesi vecchi libero spazio senza perdere niente.' : 'I dati sono salvati solo in questo browser, che ha circa 5 MB. ' + (UI.lsPieno ? 'Gli ultimi inserimenti potrebbero non essere stati salvati. ' : '') + 'Salva una copia completa, poi archivia: foto dei pasti più vecchie di 2 mesi e alimentazione più vecchia di 6 mesi escono dal telefono, ma restano nella copia e puoi ripristinarle.')
     + '</span><div class="grid2">' + (Store.cloud ? '' : '<button type="button" class="btn sm" data-a="saveexp">Salva una copia</button>') + '<button type="button" class="btn sm dark"' + (can ? '' : ' disabled') + ' data-a="archivia">' + (can ? 'Archivia mesi vecchi' : 'Niente da archiviare') + '</button></div></div>';
 }
@@ -3303,7 +3304,7 @@ function nBars(R){
   const mx = Math.max(1, ...R.days.map(d => Math.max(d.t.kcal, d.T ? d.T.kcal : 0))); const fitti = R.n > 10; const oggi = isoDate(new Date());
   return '<div class="nbars' + (fitti ? ' fitti' : '') + '" style="grid-template-columns:repeat(' + R.n + ',minmax(0,1fr))">' + R.days.map(d => { const T = d.T ? d.T.kcal : 0; const st = !d.has ? 'vuoto' : !d.completo ? 'parz' : !T ? 'ok' : d.t.kcal > T * 1.1 ? 'over' : d.t.kcal < T * 0.9 ? 'under' : 'ok'; const dd = parseDate(d.ds);
     return '<button type="button" class="nbar ' + st + (d.ds === oggi ? ' oggi' : '') + '" data-a="ngiorno" data-v="' + d.ds + '" aria-label="' + esc(fmtD(dd)) + ': ' + (d.has ? fmtK(d.t.kcal) + ' kcal' + (T ? ' su ' + fmtK(T) : '') : 'nessun pasto registrato') + '"><span class="col">' + (T ? '<b style="bottom:' + (T / mx * 100).toFixed(1) + '%"></b>' : '') + '<i style="height:' + (d.has ? Math.max(3, d.t.kcal / mx * 100).toFixed(1) : 0) + '%"></i></span><span class="lab">' + (fitti ? (dd.getDate() === 1 || d === R.days[0] || dd.getDay() === 1 ? dd.getDate() : '') : GG[dd.getDay()].charAt(0).toUpperCase() + '<br>' + dd.getDate()) + '</span></button>'; }).join('') + '</div>'
-    + '<div class="legend" style="flex-wrap:wrap;gap:6px 12px"><span><i style="background:var(--ok)"></i>in obiettivo</span><span><i style="background:var(--accent)"></i>sopra</span><span><i style="background:var(--p)"></i>sotto</span><span><i style="background:var(--line)"></i>giornata incompleta</span><span style="margin-left:auto">— obiettivo</span></div>';
+    + '<div class="legend" style="flex-wrap:wrap;gap:6px 12px"><span><i style="background:var(--ok)"></i>in obiettivo</span><span><i style="background:var(--hot)"></i>sopra</span><span><i style="background:var(--p)"></i>sotto</span><span><i style="background:var(--line)"></i>giornata incompleta</span><span style="margin-left:auto">— obiettivo</span></div>';
 }
 function nTopCibi(R, key){ const m = {}; let tot = 0; R.C.forEach(d => d.items.forEach(i => { if (i.fonte === 'integratore') return; const v = +i[key] || 0; if (!(v > 0)) return; const k = String(i.nome || '').trim().toLowerCase(); if (!k) return; (m[k] = m[k] || { nome: i.nome, v: 0, n: 0 }).v += v; m[k].n++; tot += v; })); return { tot, list: Object.keys(m).map(k => m[k]).sort((a, b) => b.v - a.v).slice(0, 5) }; }
 function nSintesi(R, P){
@@ -3581,7 +3582,7 @@ function fanChart(band, unit, lab, abs){
   const area = band.map((b, i) => X(i) + ',' + Y(b.p90)).join(' ') + ' ' + band.slice().reverse().map((b, i) => X(n - i) + ',' + Y(b.p10)).join(' ');
   const ticks = [mn, (mn + mx) / 2, mx];
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fan" role="img" aria-label="' + esc(lab) + '">' + ticks.map(v => '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/><text x="' + (pl - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + fmtN(Math.abs(v) < 0.05 ? 0 : v, abs ? 0 : 1) + '</text>').join('')
-    + '<polygon points="' + area + '" fill="var(--accent)" fill-opacity="0.16"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5"/>'
+    + '<polygon points="' + area + '" fill="var(--chart)" fill-opacity="0.16"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--chart)" stroke-width="2.5"/>'
     + [0, 3, 6, 9, 12].filter(m => m <= n).map(m => '<text x="' + X(m) + '" y="' + (H - 6) + '" text-anchor="' + (m === 0 ? 'start' : m === n ? 'end' : 'middle') + '" font-size="10" fill="var(--muted)">' + (m === 0 ? 'oggi' : m + ' mesi') + '</text>').join('') + '</svg>';
 }
 function kgS(v){ return (v >= 0 ? '+' : '−') + fmtN(Math.abs(v), 1); }
@@ -3606,10 +3607,10 @@ function formaChart(M){
   const X = i => pl + (W - pl - pr) * i / n, Y = v => pt + (H - pt - pb) * (1 - v / mx); const cut = M.hist.length - 1;
   const line = (k, from, to) => all.slice(from, to + 1).map((h, i) => X(from + i) + ',' + Y(h[k])).join(' ');
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fan" role="img" aria-label="Forma e fatica, ultime 6 settimane e prossime 2"><rect x="' + X(cut) + '" y="' + pt + '" width="' + (X(n) - X(cut)) + '" height="' + (H - pt - pb) + '" fill="var(--soft)"/>'
-    + '<polyline points="' + line('ctl', 0, cut) + '" fill="none" stroke="var(--accent)" stroke-width="2.5"/><polyline points="' + line('ctl', cut, n) + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 4"/>'
+    + '<polyline points="' + line('ctl', 0, cut) + '" fill="none" stroke="var(--chart)" stroke-width="2.5"/><polyline points="' + line('ctl', cut, n) + '" fill="none" stroke="var(--chart)" stroke-width="2.5" stroke-dasharray="4 4"/>'
     + '<polyline points="' + line('atl', 0, cut) + '" fill="none" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".55"/><polyline points="' + line('atl', cut, n) + '" fill="none" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".55" stroke-dasharray="4 4"/>'
     + '<text x="' + X(cut) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="var(--muted)">oggi</text><text x="' + X(0) + '" y="' + (H - 6) + '" font-size="10" fill="var(--muted)">6 settimane fa</text><text x="' + X(n) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10" fill="var(--muted)">+2 settimane</text></svg>'
-    + '<div class="row start tiny muted" style="gap:14px"><span><b style="color:var(--accent)">━</b> forma (si costruisce in settimane)</span><span><b style="opacity:.6">━</b> fatica (passa in pochi giorni)</span></div>';
+    + '<div class="row start tiny muted" style="gap:14px"><span><b style="color:var(--accent-tx)">━</b> forma (si costruisce in settimane)</span><span><b style="opacity:.6">━</b> fatica (passa in pochi giorni)</span></div>';
 }
 function kgTxt(v){ return (v >= 0 ? '+' : '−') + fmtN(Math.abs(v), 1) + ' kg'; }
 SCREENS.previsioni = function(){
@@ -4449,7 +4450,7 @@ function rottaCard(I, sim){
   const X = w => pl + (W - pl - pr) * w / wMax, Y = v => pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn));
   const area = band.map((b, i) => X(i) + ',' + Y(b.p90)).join(' ') + ' ' + band.slice().reverse().map((b, i) => X(wMax - i) + ',' + Y(b.p10)).join(' ');
   const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fan" role="img" aria-label="Il tuo peso settimana per settimana sulla fascia prevista">' + [mn, (mn + mx) / 2, mx].map(v => '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/><text x="' + (pl - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + fmtN(v, 0) + '</text>').join('')
-    + '<polygon points="' + area + '" fill="var(--accent)" fill-opacity="0.14"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/>'
+    + '<polygon points="' + area + '" fill="var(--chart)" fill-opacity="0.14"/><polyline points="' + band.map((b, i) => X(i) + ',' + Y(b.p50)).join(' ') + '" fill="none" stroke="var(--chart)" stroke-width="1.5" stroke-dasharray="4 3"/>'
     + pts.map(p => '<circle cx="' + X(p.w) + '" cy="' + Y(p.v) + '" r="3.5" fill="var(--fg)"/>').join('')
     + '<text x="' + pl + '" y="' + (H - 4) + '" font-size="10" fill="var(--muted)">' + esc(fmtD(parseDate(R.da))) + '</text><text x="' + (W - pr) + '" y="' + (H - 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">settimana ' + wMax + '</text></svg>';
   const col = !st ? 'var(--muted)' : st.k === 'ok' ? 'var(--ok)' : st.k === 'nodata' ? 'var(--muted)' : 'var(--warn)';
@@ -4744,7 +4745,7 @@ function limInfo(o){
 }
 function miniBars(serie){
   const s = serie.map(x => x || { n: 0, lim: 0, ds: '', none: 1 }); const mx = Math.max(1, ...s.map(x => Math.max(x.n, x.lim)));
-  return '<div class="mbars" role="img" aria-label="Ultimi 14 giorni">' + s.map(x => x.none ? '<span class="none"></span>' : '<span title="' + esc(fmtD(parseDate(x.ds))) + ': ' + fmtN(x.n) + '"><i style="height:' + Math.round(x.n / mx * 100) + '%;background:' + (x.n > x.lim ? 'var(--accent)' : 'var(--ok)') + '"></i><b style="bottom:' + Math.round(x.lim / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>14 giorni fa</span><span>linea tratteggiata: il limite</span><span>oggi</span></div>';
+  return '<div class="mbars" role="img" aria-label="Ultimi 14 giorni">' + s.map(x => x.none ? '<span class="none"></span>' : '<span title="' + esc(fmtD(parseDate(x.ds))) + ': ' + fmtN(x.n) + '"><i style="height:' + Math.round(x.n / mx * 100) + '%;background:' + (x.n > x.lim ? 'var(--hot)' : 'var(--ok)') + '"></i><b style="bottom:' + Math.round(x.lim / mx * 100) + '%"></b></span>').join('') + '</div><div class="row tiny muted"><span>14 giorni fa</span><span>linea tratteggiata: il limite</span><span>oggi</span></div>';
 }
 function durata(h){ return h < 1 ? Math.round(h * 60) + ' minuti' : h < 48 ? Math.round(h) + ' ore' : Math.floor(h / 24) + ' giorni'; }
 function limTrigChips(o){
@@ -4916,8 +4917,8 @@ SCREENS.clienti = function(){
     h += '<div class="hstat" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="card" style="padding:10px 12px;gap:2px"><span class="tiny muted">Clienti</span><b class="mono" style="font-size:20px">' + man.length + '</b></div><div class="card" style="padding:10px 12px;gap:2px"><span class="tiny muted">Lezioni settimana</span><b class="mono" style="font-size:20px">' + Math.max(lw, sw) + '</b></div><div class="card" style="padding:10px 12px;gap:2px' + (ren ? ';border-color:var(--accent)' : '') + '"><span class="tiny muted">Da rinnovare</span><b class="mono" style="font-size:20px' + (ren ? ';color:var(--accent-deep)' : '') + '">' + ren + '</b></div></div>'; }
   h += '<div class="card"><div class="row"><h2>I tuoi clienti</h2><span class="chip">' + man.length + '</span></div>';
   if (!man.length) h += '<div class="empty">Aggiungi anche chi non usa l\'app: anamnesi del colloquio, questionario di salute, lezioni, misure e note. Tutto resta nel tuo account, visibile solo a te.</div>';
-  else h += '<div class="list">' + man.map(c => { const pk = cliPkg(c); const last = cliLast(c); const al = cliAlerts(c); const age = ageFrom(c.nascita); const nx = cliNext(c); const st = al.some(a => a[0] === 'acc') ? 'var(--accent)' : al.length ? 'var(--warn)' : 'var(--ok)';
-    return '<button type="button" class="clirow" data-name="' + esc(cliNome(c).toLowerCase()) + '" data-a="go" data-r="clientept" data-id="' + c.id + '"><span class="cav" style="background:' + cliColor(c) + '">' + initials(cliNome(c)) + '<i style="background:' + st + '"></i></span><span class="stack" style="flex:1;gap:2px;min-width:0"><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(cliNome(c)) + (c.appUid ? ' <span class="chip ok" style="font-size:10px;padding:2px 6px">app</span>' : '') + '</span><span class="tiny muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc([c.obiettivo ? lab(ANAM.find(x => x.k === 'obiettivo').o, c.obiettivo) : '', age ? age + ' anni' : '', nx ? 'prossima: ' + nx.g.nome : 'senza scheda'].filter(Boolean).join(' · ')) + '</span><span class="tiny muted">' + esc(last ? 'ultima lezione ' + fmtD(parseDate(last)) : 'nessuna lezione ancora') + '</span></span>' + (pk.tot ? '<span class="pkmini"><span class="mono" style="font-weight:700;font-size:13px">' + pk.left + '<span class="muted" style="font-weight:400">/' + pk.tot + '</span></span><span class="bar" style="height:4px"><span style="width:' + Math.round(pk.left / pk.tot * 100) + '%' + (pk.left <= 1 ? ';background:var(--accent)' : '') + '"></span></span></span>' : '') + ic('chev', 16) + '</button>'; }).join('') + '</div>';
+  else h += '<div class="list">' + man.map(c => { const pk = cliPkg(c); const last = cliLast(c); const al = cliAlerts(c); const age = ageFrom(c.nascita); const nx = cliNext(c); const st = al.some(a => a[0] === 'acc') ? 'var(--hot)' : al.length ? 'var(--warn)' : 'var(--ok)';
+    return '<button type="button" class="clirow" data-name="' + esc(cliNome(c).toLowerCase()) + '" data-a="go" data-r="clientept" data-id="' + c.id + '"><span class="cav" style="background:' + cliColor(c) + '">' + initials(cliNome(c)) + '<i style="background:' + st + '"></i></span><span class="stack" style="flex:1;gap:2px;min-width:0"><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(cliNome(c)) + (c.appUid ? ' <span class="chip ok" style="font-size:10px;padding:2px 6px">app</span>' : '') + '</span><span class="tiny muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc([c.obiettivo ? lab(ANAM.find(x => x.k === 'obiettivo').o, c.obiettivo) : '', age ? age + ' anni' : '', nx ? 'prossima: ' + nx.g.nome : 'senza scheda'].filter(Boolean).join(' · ')) + '</span><span class="tiny muted">' + esc(last ? 'ultima lezione ' + fmtD(parseDate(last)) : 'nessuna lezione ancora') + '</span></span>' + (pk.tot ? '<span class="pkmini"><span class="mono" style="font-weight:700;font-size:13px">' + pk.left + '<span class="muted" style="font-weight:400">/' + pk.tot + '</span></span><span class="bar" style="height:4px"><span style="width:' + Math.round(pk.left / pk.tot * 100) + '%' + (pk.left <= 1 ? ';background:var(--hot)' : '') + '"></span></span></span>' : '') + ic('chev', 16) + '</button>'; }).join('') + '</div>';
   h += '</div>';
   h += '<div class="card"><div class="row"><h2>Clienti nell\'app</h2><span class="chip">' + app.length + '</span></div>';
   if (!app.length) h += '<div class="empty">Appena qualcuno inserisce il tuo codice compare qui con livello, ultimo allenamento e lezioni rimaste.</div>';
@@ -5066,7 +5067,7 @@ SCREENS.approvazioni = function(){
   const pend = SH.ap.filter(a => a.stato === 'in_attesa').sort((a, b) => a.creato - b.creato);
   if (!pend.length) h += '<div class="empty">Tutto approvato. Ore, vendite e sostituzioni dello staff compaiono qui man mano.</div>';
   pend.forEach(a => { const s = apSummary(a); const blocked = a.tipo === 'vendita' && !(a.dettaglio || {}).pagata;
-    h += '<div class="card"><div class="row"><span class="chip ' + s.cls + '">' + esc(s.lab) + '</span><span class="tiny muted">' + esc(fmtD(a.creato)) + '</span></div><div class="stack"><span style="font-weight:700">' + esc(staffName(a.autore)) + ' · ' + esc((ROLE_LABEL[a.ruolo] || '').split(' ')[0]) + '</span><span>' + esc(s.t) + '</span><span class="small ' + (blocked ? '' : 'muted') + '" style="' + (blocked ? 'color:var(--accent);font-weight:600' : '') + '">' + esc(s.s) + '</span></div><div class="grid2"><button type="button" class="btn sm" data-a="decide" data-id="' + esc(a._id) + '" data-v="rifiutata">Rifiuta</button><button type="button" class="btn sm dark" data-a="decide" data-id="' + esc(a._id) + '" data-v="approvata">' + (a.tipo === 'vendita' ? 'Conferma' : 'Approva') + '</button></div></div>'; });
+    h += '<div class="card"><div class="row"><span class="chip ' + s.cls + '">' + esc(s.lab) + '</span><span class="tiny muted">' + esc(fmtD(a.creato)) + '</span></div><div class="stack"><span style="font-weight:700">' + esc(staffName(a.autore)) + ' · ' + esc((ROLE_LABEL[a.ruolo] || '').split(' ')[0]) + '</span><span>' + esc(s.t) + '</span><span class="small ' + (blocked ? '' : 'muted') + '" style="' + (blocked ? 'color:var(--accent-tx);font-weight:600' : '') + '">' + esc(s.s) + '</span></div><div class="grid2"><button type="button" class="btn sm" data-a="decide" data-id="' + esc(a._id) + '" data-v="rifiutata">Rifiuta</button><button type="button" class="btn sm dark" data-a="decide" data-id="' + esc(a._id) + '" data-v="approvata">' + (a.tipo === 'vendita' ? 'Conferma' : 'Approva') + '</button></div></div>'; });
   const done = SH.ap.filter(a => a.stato !== 'in_attesa').sort((a, b) => (b.deciso || 0) - (a.deciso || 0)).slice(0, 15);
   if (done.length) { h += '<button type="button" class="btn" data-a="toggledone">' + (UI.showDone ? 'Nascondi' : 'Mostra') + ' le ultime decise</button>';
     if (UI.showDone) h += '<div class="card"><div class="list">' + done.map(a => { const s = apSummary(a); return '<div class="li"><span class="grow"><span class="title">' + esc(staffName(a.autore)) + ' · ' + esc(s.lab) + '</span><span class="small muted">' + esc(s.t) + '</span></span>' + statusChip(a.stato) + '</div>'; }).join('') + '</div></div>'; }
@@ -5123,7 +5124,7 @@ function renderStaffWait(){
   const txt = rev ? 'Il responsabile di Delta Coach ha disattivato il tuo accesso come staff. Se pensi sia un errore, scrivigli: può riattivarti in un attimo.'
     : m ? 'Hai chiesto di entrare come ' + ROLE_LABEL[m.ruolo].toLowerCase() + '. Il responsabile di Delta Coach deve approvare il tuo account: appena lo fa, tocca «Controlla di nuovo»' + (m.ruolo === 'pt' ? ' e trovi il codice da dare ai tuoi clienti.' : '.')
     : 'Per usare l\'app come staff inserisci il codice di accesso che ti ha dato il responsabile di Delta Coach.';
-  let h = '<div class="screen notab" style="gap:18px"><div class="row start" style="gap:10px"><span class="avatar" style="background:var(--fg);color:var(--bg);border:0;border-radius:12px">Δ</span><span style="font-weight:800;letter-spacing:.02em">Delta Coach</span></div>';
+  let h = '<div class="screen notab" style="gap:18px"><div class="row start brand" style="gap:10px"><span class="brandmark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3.2 21.6 20.4H2.4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg></span><span class="brandname">Delta Coach</span></div>';
   h += '<div class="card"><span class="eyebrow">Accesso staff</span><h2>' + tit + '</h2><span class="small" style="line-height:1.5">' + txt + '</span>'
     + (m && !rev ? '<button type="button" class="btn pri wide" data-a="dcrecheck">Controlla di nuovo</button>' : '')
     + (!m ? '<button type="button" class="btn pri wide" data-a="staffredo">Inserisci il codice</button>' : '') + '</div>';
