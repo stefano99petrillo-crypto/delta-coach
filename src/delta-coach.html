@@ -582,6 +582,37 @@ h2{font-size:18px;font-weight:750;letter-spacing:-.01em;line-height:1.25}
 /* comandi forti: neri su chiaro, grigio caldo rialzato su scuro (il bianco pieno resta all'oro e alla selezione) */
 .btn.dark,.seg button[aria-selected="true"]{background:var(--strong);color:var(--strong-fg);border-color:var(--strong-line)}
 .card.ink .btn.light{color:#0A0A0A}
+/* ================= grafica dinamica ================= */
+.fx3d{position:relative;min-width:0}
+.fxcv{width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab;-webkit-user-select:none;user-select:none}
+.fxcv:active{cursor:grabbing}
+.fxconf{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:80}
+.welcomehero{gap:2px;padding:10px 16px 18px;align-items:stretch}
+.muscard{gap:12px}
+.musrow{display:flex;gap:10px;align-items:stretch}
+.musfig{flex:0 0 44%;height:270px}
+.musbar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.musbar span{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.platebox{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:14px;background:var(--bg)}
+.platesvg{width:100%;max-width:300px;height:auto;display:block}
+.plate{animation:plateIn .28s cubic-bezier(.2,.8,.2,1) both;transform-box:fill-box}
+@keyframes plateIn{from{transform:translateX(26px);opacity:0}}
+.restring{width:46px;height:46px;flex:0 0 auto;transform:rotate(-90deg)}
+.restring circle{fill:none;stroke-width:5}
+.restring .rt{stroke:var(--ink-line)}
+.restring .rf{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:138.2;transition:stroke-dashoffset 1s linear}
+.boot::before{content:"";display:block;width:56px;height:56px;margin:22vh auto 18px;background:linear-gradient(110deg,#8A6A12 25%,#F6DE82 45%,#D4AF37 55%,#8A6A12 75%);background-size:260% 100%;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.2 21.6 20.4H2.4Z' fill='none' stroke='%23000' stroke-width='2.6' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.2 21.6 20.4H2.4Z' fill='none' stroke='%23000' stroke-width='2.6' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;animation:bootShine 1.5s linear infinite}
+@keyframes bootShine{from{background-position:130% 0}to{background-position:-130% 0}}
+/* ingresso della schermata: una sola sequenza, solo quando cambi schermata */
+.enter .screen>*{animation:riseIn .44s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,8) * 45ms + var(--et,0ms))}
+.enter .screen>:nth-child(1){--i:0} .enter .screen>:nth-child(2){--i:1} .enter .screen>:nth-child(3){--i:2} .enter .screen>:nth-child(4){--i:3} .enter .screen>:nth-child(5){--i:4} .enter .screen>:nth-child(6){--i:5} .enter .screen>:nth-child(7){--i:6} .enter .screen>:nth-child(8){--i:7}
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}}
+.enter .bar>span,.enter .mbar .mf,.enter .musbar span,.enter .g-track>span{animation:growX .75s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(220ms + var(--et,0ms));transform-origin:left center}
+@keyframes growX{from{transform:scaleX(0)}}
+.enter .nbar .col i,.enter .mbars i{animation:growY .65s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(240ms + var(--et,0ms));transform-origin:center bottom}
+@keyframes growY{from{transform:scaleY(0)}}
+.enter .draw{stroke-dasharray:1;animation:drawIn 1.1s ease-out both;animation-delay:calc(260ms + var(--et,0ms))}
+@keyframes drawIn{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion: reduce){ .livedot{animation:none} }
 </style>
 
@@ -2076,7 +2107,7 @@ function lineChart(pts, unit){
     + '<text x="' + (pl - 6) + '" y="' + (Y(top) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono, monospace">' + lab(top) + '</text>'
     + '<text x="' + (pl - 6) + '" y="' + (Y(bot) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono, monospace">' + lab(bot) + '</text>'
     + '<path d="' + area + '" fill="currentColor" opacity="0.08"/>'
-    + '<polyline points="' + line + '" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<polyline class="draw" pathLength="1" points="' + line + '" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
     + pts.map((p, i) => '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="' + (i === pts.length - 1 ? 5 : 3.5) + '" fill="' + (i === pts.length - 1 ? 'var(--surface)' : 'currentColor') + '" stroke="currentColor" stroke-width="2.5"/>').join('')
     + '<text x="' + pl + '" y="' + (H - 6) + '" font-size="10" fill="var(--muted)">' + esc(first.x) + '</text>'
     + '<text x="' + (W - pr) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + esc(last.x) + '</text>'
@@ -2104,6 +2135,7 @@ async function go(route, params){
   else if (route === 'sessione' && LIVE && !LIVE.cid && CLX) exitClient();
   if (CLX && CL_ROUTES.indexOf(route) < 0) exitClient();
   if (S && S.profilo.ruolo === 'pt' && Object.prototype.hasOwnProperty.call(AG_MAP, route)) { if (AG_MAP[route]) UI.atab = AG_MAP[route]; route = 'agenda'; }
+  if (UI.route !== route || JSON.stringify(UI.params || {}) !== JSON.stringify(params || {})) UI.enterT = Date.now();
   UI.route = route; UI.params = params || {}; UI.sheet = null; UI.err = '';
   render(); try { window.scrollTo(0, 0); } catch(e){}
   try { await loadFor(route); } catch(e) { console.warn(e); }
@@ -2132,6 +2164,143 @@ async function loadFor(r){
   if (role === 'manager') { const res = await Promise.all([Store.query('approvazioni'), Store.query('staff'), getCfg()]); SH.ap = res[0]; SH.staff = res[1]; SH.cfg = res[2]; }
 }
 
+/* ================= grafica dinamica: solidi 3D sfaccettati disegnati su canvas (nessuna libreria) ================= */
+const FX = { items: {}, raf: 0, last: 0, still: false };
+try { const mq = window.matchMedia('(prefers-reduced-motion: reduce)'); FX.still = mq.matches; mq.addEventListener('change', e => { FX.still = e.matches; fxKick(); }); } catch(e){}
+function fxV(a, b){ return [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; }
+function fxCross(a, b){ return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function fxNorm(a){ const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+/* tronco di prisma tra due punti: rx = mezza larghezza, rz = mezza profondità; g = gruppo (o funzione della normale) */
+function fxPrism(M, p0, p1, r0, r1, n, g, caps){
+  const a = fxNorm(fxV(p0, p1)); let u = fxCross(a, [0, 0, 1]); if (Math.hypot(u[0], u[1], u[2]) < 1e-4) u = [1, 0, 0]; u = fxNorm(u); const v = fxNorm(fxCross(a, u)); const base = M.v.length;
+  for (let k = 0; k < 2; k++) { const p = k ? p1 : p0, r = k ? r1 : r0; for (let i = 0; i < n; i++) { const t = (i + 0.5) / n * Math.PI * 2; const cx = Math.cos(t) * r[0], cz = Math.sin(t) * r[1]; M.v.push([p[0] + u[0] * cx + v[0] * cz, p[1] + u[1] * cx + v[1] * cz, p[2] + u[2] * cx + v[2] * cz]); } }
+  const c = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2];
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; M.f.push({ v: [base + i, base + j, base + n + j, base + n + i], g, c }); }
+  if (caps !== false) { const top = [], bot = []; for (let i = 0; i < n; i++) { top.push(base + n - 1 - i); bot.push(base + n + i); } M.f.push({ v: top, g, c }); M.f.push({ v: bot, g, c }); }
+}
+function fxFinish(M){   // normali nello spazio del modello, orientate verso l'esterno rispetto al baricentro della parte
+  M.f.forEach(f => { const P = f.v.map(i => M.v[i]); let n = [0, 0, 0]; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); } n = fxNorm(n); const m = [0, 0, 0]; P.forEach(q => { m[0] += q[0] / P.length; m[1] += q[1] / P.length; m[2] += q[2] / P.length; }); const c = f.c || [0, 0, 0]; let d = n[0] * (m[0] - c[0]) + n[1] * (m[1] - c[1]) + n[2] * (m[2] - c[2]); if (f.inv) d = -d; if (d < 0) n = [-n[0], -n[1], -n[2]]; f.n = n; if (typeof f.g === 'function') f.g = f.g(f.n); });
+  return M;
+}
+const FX_MODELS = {
+  /* il marchio: un triangolo Δ con il foro, estruso */
+  delta(){ const M = { v: [], f: [] }; const R = 1.25, r = 0.6, d = 0.26; const P = (rad, z) => [0, 1, 2].map(i => { const t = Math.PI / 2 + i * Math.PI * 2 / 3; return [Math.cos(t) * rad, Math.sin(t) * rad - 0.12, z]; });
+    const of = P(R, d), ob = P(R, -d), nf = P(r, d * 0.72), nb = P(r, -d * 0.72); M.v = of.concat(ob, nf, nb);   // 0-2 fuori davanti, 3-5 fuori dietro, 6-8 dentro davanti, 9-11 dentro dietro
+    const O = [0, -0.12, 0]; const mid = (a, b) => [(M.v[a][0] + M.v[b][0]) / 2, (M.v[a][1] + M.v[b][1]) / 2, 0];
+    for (let i = 0; i < 3; i++) { const j = (i + 1) % 3; M.f.push({ v: [i, j, 6 + j, 6 + i], g: 'gold', c: mid(i, 6 + j) }, { v: [3 + j, 3 + i, 9 + i, 9 + j], g: 'gold', c: mid(3 + i, 9 + j) }, { v: [j, i, 3 + i, 3 + j], g: 'gold', c: O }, { v: [6 + i, 6 + j, 9 + j, 9 + i], g: 'gold', c: O, inv: true }); }
+    return fxFinish(M); },
+  /* il diamante del livello: più sfaccettature a ogni fascia */
+  gem(n){ n = Math.max(4, n || 8); const M = { v: [], f: [] }; const ring = (rad, y, off) => { const b = M.v.length; for (let i = 0; i < n; i++) { const t = (i + off) / n * Math.PI * 2; M.v.push([Math.cos(t) * rad, y, Math.sin(t) * rad]); } return b; };
+    const T = ring(0.62, 0.62, 0), G = ring(1.12, 0.18, 0.5), K = ring(1.12, 0.05, 0.5); const C = M.v.length; M.v.push([0, -1.25, 0]);
+    const O = [0, -0.1, 0]; const top = []; for (let i = n - 1; i >= 0; i--) top.push(T + i); M.f.push({ v: top, g: 'gold', c: O });
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; M.f.push({ v: [T + j, T + i, G + i], g: 'gold', c: O }, { v: [T + j, G + i, G + j], g: 'gold', c: O }, { v: [G + j, G + i, K + i, K + j], g: 'gold', c: O }, { v: [K + j, K + i, C], g: 'gold', c: O }); }
+    return fxFinish(M); },
+  /* manichino a basso numero di facce: ogni zona appartiene a un gruppo muscolare */
+  body(){ const M = { v: [], f: [] }; const FB = (front, back, side) => n => n[2] > 0.3 ? front : n[2] < -0.3 ? back : side;
+    fxPrism(M, [0, 1.8, 0], [0, 1.58, 0], [0.16, 0.18], [0.215, 0.235], 8, 'x'); fxPrism(M, [0, 1.58, 0], [0, 1.36, 0.01], [0.215, 0.235], [0.15, 0.17], 8, 'x'); fxPrism(M, [0, 1.38, 0], [0, 1.2, 0], [0.11, 0.115], [0.2, 0.13], 6, FB('x', 'Schiena', 'Schiena'), false);
+    fxPrism(M, [0, 1.22, 0], [0, 0.9, 0.02], [0.5, 0.2], [0.55, 0.27], 10, FB('Petto', 'Schiena', 'Schiena'));
+    fxPrism(M, [0, 0.9, 0.02], [0, 0.6, 0.01], [0.55, 0.27], [0.45, 0.23], 10, FB('Petto', 'Schiena', 'Schiena'), false);
+    fxPrism(M, [0, 0.6, 0.01], [0, 0.12, 0], [0.45, 0.23], [0.36, 0.19], 10, FB('Core', 'Schiena', 'Core'), false);
+    fxPrism(M, [0, 0.12, 0], [0, -0.14, -0.01], [0.36, 0.19], [0.41, 0.23], 10, FB('Core', 'Gambe', 'Gambe'), false);
+    fxPrism(M, [0, -0.14, -0.01], [0, -0.34, 0], [0.41, 0.23], [0.4, 0.22], 10, FB('Core', 'Gambe', 'Gambe'));
+    [-1, 1].forEach(s => {
+      fxPrism(M, [s * 0.5, 1.24, 0], [s * 0.72, 0.92, 0], [0.15, 0.17], [0.17, 0.18], 7, 'Spalle');
+      fxPrism(M, [s * 0.7, 0.98, 0], [s * 0.84, 0.4, 0], [0.145, 0.155], [0.11, 0.115], 7, 'Braccia');
+      fxPrism(M, [s * 0.84, 0.42, 0], [s * 0.97, -0.14, 0.05], [0.115, 0.11], [0.075, 0.07], 7, 'Braccia');
+      fxPrism(M, [s * 0.97, -0.14, 0.05], [s * 1.01, -0.36, 0.07], [0.075, 0.05], [0.055, 0.04], 5, 'x');
+      fxPrism(M, [s * 0.205, -0.3, 0], [s * 0.225, -1.04, 0], [0.205, 0.225], [0.135, 0.145], 8, 'Gambe');
+      fxPrism(M, [s * 0.225, -1.02, 0], [s * 0.22, -1.34, -0.03], [0.13, 0.15], [0.125, 0.15], 8, 'Gambe', false);
+      fxPrism(M, [s * 0.22, -1.34, -0.03], [s * 0.215, -1.72, -0.01], [0.125, 0.15], [0.075, 0.08], 8, 'Gambe');
+      fxPrism(M, [s * 0.215, -1.72, 0.07], [s * 0.215, -1.82, 0.09], [0.085, 0.17], [0.095, 0.2], 6, 'x'); });
+    return fxFinish(M); }
+};
+const FX_GOLD = [[38, 28, 6], [120, 90, 16], [212, 175, 55], [246, 222, 130], [255, 246, 208]];
+const FX_GREY = [[30, 30, 28], [62, 61, 56], [104, 102, 94], [150, 148, 138], [205, 203, 194]];
+function fxRamp(R, t){ t = clamp(t, 0, 1) * (R.length - 1); const i = Math.min(R.length - 2, Math.floor(t)), k = t - i; return [0, 1, 2].map(c => R[i][c] + (R[i + 1][c] - R[i][c]) * k); }
+function fxDraw(it){
+  const cv = it.cv, ctx = it.ctx; const W = cv.width, H = cv.height; if (!W || !H) return; ctx.clearRect(0, 0, W, H);
+  const M = it.model; const cy = Math.cos(it.yaw), sy = Math.sin(it.yaw), cp = Math.cos(it.pitch), sp = Math.sin(it.pitch); const D = 7, S = Math.min(W / it.fitW, H / it.fitH) * D;
+  const rot = p => { const x = p[0] * cy + p[2] * sy, z0 = -p[0] * sy + p[2] * cy; return [x, p[1] * cp - z0 * sp, p[1] * sp + z0 * cp]; };
+  const V = M.v.map(rot); const L = fxNorm([-0.45, 0.75, 0.65]), Hh = fxNorm([L[0], L[1], L[2] + 1]);
+  if (it.glow) { const g = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, Math.min(W, H) * 0.62); g.addColorStop(0, 'rgba(212,175,55,.20)'); g.addColorStop(1, 'rgba(212,175,55,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+  const out = [];
+  M.f.forEach(f => { const n = rot(f.n); let cx = 0, cyy = 0, cz = 0; f.v.forEach(i => { cx += V[i][0]; cyy += V[i][1]; cz += V[i][2]; }); const k = f.v.length; cx /= k; cyy /= k; cz /= k;
+    if (n[0] * -cx + n[1] * -cyy + n[2] * (D - cz) <= 0) return;
+    const dif = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2]), spec = Math.pow(Math.max(0, n[0] * Hh[0] + n[1] * Hh[1] + n[2] * Hh[2]), 22);
+    const load = f.g === 'gold' ? 1 : f.g === 'x' ? -1 : (it.load && it.load[f.g]) || 0; let t = (it.amb || 0.16) + dif * 0.5 + spec * 0.5; let c;
+    if (load < 0) c = fxRamp(FX_GREY, t * 0.8); else if (load >= 1) c = fxRamp(FX_GOLD, t); else if (load <= 0) c = fxRamp(FX_GREY, t); else { const a = fxRamp(FX_GREY, t), b = fxRamp(FX_GOLD, t * (0.5 + 0.5 * load)); const m = 0.55 + load * 0.45; c = [0, 1, 2].map(i => a[i] + (b[i] - a[i]) * m); }
+    out.push({ z: cz, f, col: 'rgb(' + c.map(x => Math.round(x)).join(',') + ')' }); });
+  out.sort((a, b) => a.z - b.z); ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1, it.dpr * 0.75);
+  out.forEach(o => { ctx.beginPath(); o.f.v.forEach((i, k) => { const p = V[i], s = S / (D - p[2]); const x = W / 2 + p[0] * s, y = H * it.cy - p[1] * s; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.closePath(); ctx.fillStyle = o.col; ctx.strokeStyle = o.col; ctx.fill(); ctx.stroke(); });
+}
+function fxTick(ts){
+  FX.raf = 0; const dt = Math.min(0.05, (ts - (FX.last || ts)) / 1000); FX.last = ts; let live = false;
+  Object.keys(FX.items).forEach(k => { const it = FX.items[k]; if (!it.cv.isConnected) return; const idle = !it.drag;
+    if (idle) { if (Math.abs(it.vy) > 0.02) { it.yaw += it.vy * dt; it.vy *= Math.pow(0.05, dt); it.dirty = true; } else if (!FX.still) { it.yaw += it.spin * dt; it.dirty = true; } }
+    if (it.dirty) { fxDraw(it); it.dirty = false; } if (!FX.still || it.drag || Math.abs(it.vy) > 0.02) live = true; });
+  if (live && document.visibilityState === 'visible') FX.raf = requestAnimationFrame(fxTick); else FX.last = 0;
+}
+function fxKick(){ if (!FX.raf) FX.raf = requestAnimationFrame(fxTick); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fxKick(); });
+function fxItem(key, kind, arg){
+  let it = FX.items[key]; if (it && it.sig === kind + '|' + arg) return it;
+  const cv = it ? it.cv : document.createElement('canvas'); cv.className = 'fxcv'; cv.setAttribute('aria-hidden', 'true');
+  const base = { delta: { fitW: 3.1, fitH: 2.9, cy: 0.5, pitch: 0.18, spin: 0.7, glow: true }, gem: { fitW: 2.9, fitH: 2.5, cy: 0.42, pitch: 0.42, spin: 0.55, glow: true }, body: { fitW: 2.12, fitH: 3.78, cy: 0.5, pitch: 0.05, spin: 0.45, glow: false, amb: 0.3 } }[kind];
+  const n = Object.assign({ cv, ctx: cv.getContext('2d'), kind, sig: kind + '|' + arg, model: FX_MODELS[kind](+arg || 0), yaw: it ? it.yaw : (kind === 'body' ? 0.5 : 0.6), vy: 0, drag: null, dirty: true, dpr: 1, load: null }, base);
+  if (!it) {
+    cv.addEventListener('pointerdown', e => { const I = FX.items[key]; I.drag = { x: e.clientX, t: performance.now(), yaw: I.yaw }; I.vy = 0; try { cv.setPointerCapture(e.pointerId); } catch(e2){} fxKick(); });
+    cv.addEventListener('pointermove', e => { const I = FX.items[key]; if (!I.drag) return; const now = performance.now(); const nx = I.drag.yaw + (e.clientX - I.drag.x) * 0.012; I.vy = (nx - I.yaw) / Math.max(0.008, (now - I.drag.t) / 1000) * 0.35 + I.vy * 0.65; I.yaw = nx; I.drag.yaw = nx; I.drag.x = e.clientX; I.drag.t = now; I.dirty = true; });
+    const up = () => { const I = FX.items[key]; if (I) { I.drag = null; I.vy = clamp(I.vy, -9, 9); fxKick(); } }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  }
+  FX.items[key] = n; return n;
+}
+/* dopo ogni disegno della schermata: rimetto i canvas (sempre gli stessi, così la rotazione continua) nei loro posti */
+function fxMount(){
+  document.querySelectorAll('[data-fx]').forEach(el => { const it = fxItem(el.dataset.key || el.dataset.fx, el.dataset.fx, el.dataset.n || '');
+    if (el.dataset.load) { try { it.load = JSON.parse(el.dataset.load); } catch(e) { it.load = null; } }
+    if (it.cv.parentNode !== el) el.appendChild(it.cv); const r = el.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1); const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (w && h && (it.cv.width !== w || it.cv.height !== h)) { it.cv.width = w; it.cv.height = h; } it.dpr = dpr; it.dirty = true; });
+  fxKick();
+}
+/* coriandoli a triangolo (piccoli Δ) quando salvi un allenamento; di più se c'è un record */
+function fxConfetti(n){
+  if (FX.still) return; n = n || 70; const cv = document.createElement('canvas'); cv.className = 'fxconf'; cv.setAttribute('aria-hidden', 'true'); const dpr = Math.min(2, window.devicePixelRatio || 1); const W = cv.width = Math.round(innerWidth * dpr), H = cv.height = Math.round(innerHeight * dpr); document.body.appendChild(cv); const ctx = cv.getContext('2d');
+  const C = ['#D4AF37', '#F6DE82', '#FFF6D0', '#8A6A12', '#FFFFFF']; const P = []; for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.5, v = (0.55 + Math.random() * 0.75) * H * 0.9; P.push({ x: W / 2 + (Math.random() - 0.5) * W * 0.3, y: H * 0.62, vx: Math.cos(a) * v * 0.55, vy: Math.sin(a) * v, r: Math.random() * 6, vr: (Math.random() - 0.5) * 12, s: (5 + Math.random() * 7) * dpr, c: C[i % C.length], tri: i % 3 !== 0 }); }
+  let t0 = 0; const step = ts => { if (!t0) t0 = ts; const t = (ts - t0) / 1000; const dt = 1 / 60; ctx.clearRect(0, 0, W, H); const al = t > 1.5 ? Math.max(0, 1 - (t - 1.5) / 0.7) : 1;
+    P.forEach(p => { p.vy += H * 1.7 * dt; p.vx *= 0.992; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = al; ctx.fillStyle = p.c; ctx.beginPath(); if (p.tri) { ctx.moveTo(0, -p.s); ctx.lineTo(p.s * 0.9, p.s * 0.7); ctx.lineTo(-p.s * 0.9, p.s * 0.7); } else ctx.rect(-p.s * 0.6, -p.s * 0.3, p.s * 1.2, p.s * 0.6); ctx.closePath(); ctx.fill(); ctx.restore(); });
+    if (t < 2.2) requestAnimationFrame(step); else cv.remove(); }; requestAnimationFrame(step);
+}
+
+/* ---------- dove vanno i solidi 3D e le altre grafiche vive ---------- */
+function gemFacce(L){ return L < 5 ? 4 : L < 10 ? 6 : L < 20 ? 8 : L < 35 ? 10 : L < 50 ? 12 : 16; }
+function gemNext(L){ return [5, 10, 20, 35, 50].find(x => x > L) || null; }
+const MUS_G = ['Petto', 'Schiena', 'Spalle', 'Braccia', 'Core', 'Gambe'];
+function muscoliSett(list){
+  const from = Date.now() - 7 * DAY; const sets = {}; MUS_G.forEach(g => { sets[g] = 0; }); let n = 0;
+  (list || sessions()).forEach(x => { if (x.inizio < from) return; n++; (x.esercizi || []).forEach(e => { const k = (e.serie || []).length; MUSCOLI.forEach(m => { if (sets[m[0]] != null && m[1].test(e.nome) && !(m[2] && m[2].test(e.nome))) sets[m[0]] += k; }); }); });
+  const load = {}; MUS_G.forEach(g => { load[g] = Math.min(1, sets[g] / 10); }); return { sets, load, n };
+}
+function muscoliCard(list, key, chi){
+  const W = muscoliSett(list); const tot = MUS_G.reduce((a, g) => a + W.sets[g], 0); const mx = Math.max(10, ...MUS_G.map(g => W.sets[g])); const zero = MUS_G.filter(g => !W.sets[g]);
+  return '<div class="card ink muscard"><div class="row"><span class="eyebrow">Muscoli allenati · ultimi 7 giorni</span><span class="tiny muted">' + W.n + (W.n === 1 ? ' seduta' : ' sedute') + '</span></div>'
+    + '<div class="musrow"><div class="fx3d musfig" data-fx="body" data-key="body-' + esc(key || 'me') + '" data-load="' + esc(JSON.stringify(W.load)) + '" role="img" aria-label="Figura 3D: i gruppi muscolari allenati sono in oro"></div>'
+    + '<div class="stack" style="gap:9px;flex:1;justify-content:center">' + MUS_G.map(g => '<div class="stack" style="gap:3px"><div class="row"><span class="small" style="font-weight:650' + (W.sets[g] ? '' : ';opacity:.55') + '">' + g + '</span><span class="mono tiny" style="opacity:.8">' + W.sets[g] + ' serie</span></div><div class="musbar"><span style="width:' + Math.round(W.sets[g] / mx * 100) + '%"></span></div></div>').join('') + '</div></div>'
+    + '<span class="tiny muted" style="line-height:1.4">' + (tot ? (zero.length ? 'Questa settimana ' + (chi ? chi + ' non ha ancora' : 'non hai ancora') + ' toccato: ' + zero.join(', ').toLowerCase() + '. ' : 'Tutti i gruppi hanno lavorato. ') : 'Nessun allenamento negli ultimi 7 giorni: la figura si accende in oro dove lavori. ') + 'Trascina la figura per girarla.</span></div>';
+}
+/* bilanciere con i dischi da caricare per lato */
+const PLATES = [[25, 20, 74, '#B93221'], [20, 18, 74, '#2F5BA8'], [15, 15, 64, '#D4AF37'], [10, 13, 54, '#2E7D5B'], [5, 10, 42, '#E9E8E2'], [2.5, 8, 32, '#55534B'], [1.25, 6, 26, '#8A887F']];
+function plateInfo(e){
+  if (e.tipo !== 'pesi') return null; const att = exAtt(e.nome, e.tipo).k; if (att !== 'bilanciere' && att !== 'multi') return null; const n = exNorm(e.nome); if (/\bez\b|trap|esagonal|hex|landmine/.test(n)) return null;
+  const st = e.serie.find(x => !x.ok && num(x.kg) > 0) || e.serie.slice().reverse().find(x => num(x.kg) > 0); const kg = st ? num(st.kg) : 0; const bar = att === 'bilanciere' ? 20 : 0; if (!(kg > 0)) return null;
+  let side = (kg - bar) / 2; if (side < 0) return { kg, bar, list: [], rest: 0, sotto: true }; const list = []; PLATES.forEach(pl => { while (side >= pl[0] - 1e-6 && list.length < 10) { list.push(pl); side -= pl[0]; } }); return { kg, bar, list, rest: Math.round(side * 100) / 100 };
+}
+function plateSvg(e){
+  const P = plateInfo(e); if (!P) return ''; let x = 58; const pl = P.list.map((p, i) => { const r = '<rect class="plate" style="animation-delay:' + (i * 45) + 'ms" x="' + x + '" y="' + (42 - p[2] / 2) + '" width="' + p[1] + '" height="' + p[2] + '" rx="4" fill="' + p[3] + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/>'; x += p[1] + 3; return r; }).join('');
+  const txt = P.sotto ? 'Meno del bilanciere (20 kg): usa una sbarra più leggera' : (P.list.length ? 'Per lato: ' + P.list.map(p => fmtN(p[0], 2)).join(' + ') + ' kg' : 'Solo il bilanciere') + (P.rest > 0 ? ' · restano ' + fmtN(P.rest, 2) + ' kg per lato non componibili' : '') + (P.bar ? ' · bilanciere ' + P.bar + ' kg' : ' · sbarra a parte');
+  return '<svg class="platesvg" viewBox="0 0 260 84" role="img" aria-label="' + esc(txt) + '"><rect x="0" y="38" width="44" height="8" rx="2" fill="var(--muted)" opacity=".55"/><rect x="40" y="29" width="13" height="26" rx="3" fill="var(--muted)"/><rect x="53" y="35" width="205" height="14" rx="4" fill="var(--muted)" opacity=".75"/>' + pl + (P.list.length ? '<rect class="plate" style="animation-delay:' + (P.list.length * 45) + 'ms" x="' + x + '" y="31" width="10" height="22" rx="3" fill="var(--accent)" stroke="rgba(0,0,0,.35)" stroke-width="1"/>' : '') + '</svg><span class="tiny muted" style="line-height:1.35">' + esc(txt) + '</span>';
+}
+function plateBox(e, k){ const h = plateSvg(e); return h ? '<div class="platebox" id="plate-' + k + '">' + h + '</div>' : ''; }
+
 /* ---------- render ---------- */
 const app = $('#app'); let LAST_SHEET_K = null;
 function render(){
@@ -2153,7 +2322,8 @@ function render(){
     html += '<div class="scrim' + (LAST_SHEET_K !== UI.sheet.k ? ' fresh' : '') + '" data-a="closesheet"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + sh + '</div></div>'; }
   LAST_SHEET_K = UI.sheet ? UI.sheet.k : null;
   const active = document.activeElement; const keepId = active && active.id && app.contains(active) ? active.id : null;
-  app.innerHTML = html;
+  { const el = Date.now() - (UI.enterT || 0); if (el < 900 && !UI.sheet) { app.classList.add('enter'); app.style.setProperty('--et', '-' + el + 'ms'); } else app.classList.remove('enter'); }
+  app.innerHTML = html; fxMount();
   if (keepId) { const el = document.getElementById(keepId); if (el) { try { el.focus({ preventScroll: true }); } catch(e){} } }
 }
 function renderTabs(game){
@@ -2202,7 +2372,7 @@ function renderLogin(){
       + '<button class="btn pri wide" type="submit">Entra come ' + ROLE_LABEL[L.role].toLowerCase() + '</button></form>'
       + '<div style="margin-top:auto;border-top:1px solid var(--line);padding-top:16px"><button type="button" class="btn wide" data-a="loginmode" data-m="cliente">' + ic('back', 18) + ' Sono un cliente</button></div>';
   }
-  return '<div class="screen notab" style="gap:18px"><div class="row start brand" style="gap:10px"><span class="brandmark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3.2 21.6 20.4H2.4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg></span><span class="brandname">Delta Coach</span></div>' + body + '</div>';
+  return '<div class="screen notab" style="gap:18px"><div class="card ink welcomehero"><div class="fx3d" data-fx="delta" data-key="welcome" style="height:150px" role="img" aria-label="Il marchio Delta in tre dimensioni"></div><span class="brandname" style="font-size:22px;text-align:center">Delta Coach</span></div>' + body + '</div>';
 }
 function genderPills(cur){ return [['m','maschile'],['f','femminile'],['n','neutro']].map(g => '<button type="button" class="pill" data-a="setgender" data-v="' + g[0] + '" aria-pressed="' + (cur === g[0]) + '">' + g[1] + '</button>').join(''); }
 
@@ -2658,6 +2828,7 @@ SCREENS.allenati = function(){
   h += '<p class="tiny muted" style="margin:0;line-height:1.4">Altra attività: corsi di gruppo, corsa, bici, nuoto, camminata. Contano per la tua classe e per i livelli.</p>';
   const m0 = monthRange(monthKey(new Date())); const ms = sessions().filter(s => s.inizio >= m0[0]); const ma = (CLX ? [] : S.attivita).filter(a => parseDate(a.data).getTime() >= m0[0]);
   const vol = ms.reduce((a, s) => a + (s.esercizi || []).reduce((b, e) => b + (e.tipo === 'cardio' ? 0 : (e.serie || []).reduce((c, st) => c + (+st.kg || 0) * (+st.rip || 0), 0)), 0), 0);
+  h += muscoliCard(null, CLX || 'me', CLX ? ((CLI[CLX] || {}).nome || 'il cliente') : '');
   const R = computeRecords(); const prs = R.recs.filter(r => r.data >= m0[0]).length; const prSess = {}; R.recs.forEach(r => { prSess[r.sessId] = (prSess[r.sessId] || 0) + 1; });
   h += '<div class="card"><span class="eyebrow">' + esc(MML[new Date().getMonth()]) + '</span><div class="grid3"><div class="stack"><span class="big-num">' + (ms.length + ma.length) + '</span><span class="tiny muted">allenamenti</span></div><div class="stack"><span class="big-num">' + fmtK(vol) + '</span><span class="tiny muted">kg sollevati</span></div><div class="stack"><span class="big-num">' + prs + '</span><span class="tiny muted">record</span></div></div>' + (CLX ? '' : '<button type="button" class="link small" style="align-self:flex-start" data-a="recap">Condividi il mese come immagine</button>') + '</div>';
   const hist = sessions().map(s => ({ t: s.inizio, kind: 's', s })).concat((CLX ? [] : S.attivita).map(a => ({ t: parseDate(a.data).getTime() + 1, kind: 'a', a }))).sort((a, b) => b.t - a.t).slice(0, 15);
@@ -2937,6 +3108,7 @@ SCREENS.livelli = function(){
   }
   let h = '<div class="screen game" style="gap:14px">';
   h += '<div class="row"><span class="g-label">' + esc(roleLab) + '</span><span class="row" style="gap:8px"><span class="tiny muted">Modalità livelli</span><button type="button" class="switch" role="switch" aria-checked="true" data-a="togglegame" aria-label="Disattiva modalità livelli"></button><button type="button" class="avatar" style="background:transparent;border-color:var(--g-line);color:var(--g-fg)" data-a="go" data-r="profilo" aria-label="Profilo">' + initials(S.profilo.nome) + '</button></span></div>';
+  { const nf = gemFacce(T.lv.L), nx = gemNext(T.lv.L); h += '<div class="g-panel" style="align-items:center;gap:4px;padding-top:10px"><span class="c1"></span><span class="c2"></span><div class="fx3d" data-fx="gem" data-key="gem" data-n="' + nf + '" style="height:150px;width:100%" role="img" aria-label="Il diamante del tuo livello"></div><span class="tiny muted" style="text-align:center">Diamante a ' + nf + ' facce' + (nx ? ' · nuovo taglio al livello ' + nx : ' · taglio massimo') + '</span></div>'; }
   h += '<div class="g-panel"><span class="c1"></span><span class="c2"></span><div class="row" style="align-items:flex-end"><div class="row start" style="gap:10px;align-items:baseline"><span class="mono" style="color:var(--g-lime);font-weight:600">LV</span><span class="mono" style="font-size:56px;line-height:1;font-weight:600;color:#fff">' + T.lv.L + '</span></div>'
     + '<div class="stack" style="align-items:flex-end;text-align:right"><span style="font-size:18px;font-weight:800">' + esc(T.adv ? T.adv : T.base) + '</span><span class="tiny muted">' + esc(T.gr) + (T.adv ? ' (' + esc(T.base) + ')' : '') + '</span><button type="button" class="link tiny" data-a="go" data-r="classi">Come funzionano le classi</button></div></div>'
     + '<div class="g-track"><span style="width:' + (T.lv.cur / T.lv.need * 100).toFixed(0) + '%;background:var(--g-lime)"></span></div><div class="row mono tiny muted"><span>' + T.lv.cur + ' / ' + T.lv.need + ' XP</span><span>LV ' + (T.lv.L + 1) + '</span></div>';
@@ -3144,6 +3316,7 @@ function clTabAllenamenti(c){
     h += '<span class="tiny muted" style="line-height:1.4">Puoi iniziare la seduta che vuoi: la successiva in programma riparte da quella che fate oggi.</span></div>'; }
   else h += '<div class="card" style="border:2px dashed var(--fg)"><span style="font-weight:700">Nessuna scheda per ' + esc(c.nome || 'questo cliente') + '</span><span class="small muted" style="line-height:1.5">Caricala da PDF, foto o testo, oppure scrivila tu. Poi la usi qui come per i tuoi allenamenti: carichi, ripetizioni, recuperi, record e progressi restano nella sua scheda cliente.</span><div class="grid2"><button type="button" class="btn dark" data-a="clallena" data-cid="' + c.id + '" data-imp="1">' + ic('upload', 18) + ' Carica scheda</button><button type="button" class="btn" data-a="clallena" data-cid="' + c.id + '" data-r="scheda">Scrivila tu</button></div></div>';
   if ((c.schede || []).some(x => x.giorni.some(g => (g.esercizi || []).length))) h += '<div class="card"><div class="row"><h2>Schede</h2><button type="button" class="link" data-a="clallena" data-cid="' + c.id + '">Gestisci</button></div><div class="pills">' + c.schede.map(x => '<span class="chip" style="font-size:13px;padding:6px 10px">' + esc(x.nome || 'Scheda') + ' · ' + x.giorni.length + (x.giorni.length === 1 ? ' seduta' : ' sedute') + '</span>').join('') + '</div></div>';
+  if (ss.length) h += muscoliCard(ss, c.id, c.nome || 'il cliente');
   if (P.length) h += '<div class="card"><h2>Progressi</h2><span class="tiny muted">Massimale stimato dalla serie migliore · confronto con un mese fa</span><div class="list">' + P.map(b => { const d = b.prima ? b.v - b.prima : null; return '<div class="li" style="padding:8px 0"><span class="grow"><span class="title">' + esc(b.nome) + '</span><span class="tiny muted">' + b.n + (b.n === 1 ? ' seduta' : ' sedute') + ' · migliore il ' + esc(fmtD(b.data)) + '</span></span><span class="stack" style="align-items:flex-end;gap:0"><span class="mono" style="font-weight:700">' + fmtN(b.v, 0) + ' kg</span>' + (d != null ? '<span class="tiny ' + (d > 0 ? 'delta-up' : d < 0 ? 'delta-down' : 'muted') + '">' + (d > 0 ? '+' : '') + fmtN(d, 1) + ' kg</span>' : '<span class="tiny muted">nuovo</span>') + '</span></div>'; }).join('') + '</div></div>';
   if (ss.length >= 2) { const weeks = []; for (let i = 7; i >= 0; i--) { const w = weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000)); weeks.push({ x: fmtD(parseDate(w)), y: ss.filter(s => weekKey(new Date(s.inizio)) === w).reduce((a, s) => a + (s.esercizi || []).reduce((b, e) => b + (e.tipo === 'cardio' ? 0 : (e.serie || []).reduce((q, st) => q + (+st.kg || 0) * (+st.rip || 0), 0)), 0), 0) }); } h += '<div class="card"><h2>Volume a settimana</h2>' + lineChart(weeks, 'kg') + '</div>'; }
   h += '<div class="card"><h2>Storico allenamenti</h2>' + (ss.length ? '<div class="list">' + ss.slice(-8).reverse().map(s => { const ser = s.esercizi.reduce((a, e) => a + e.serie.length, 0); const v = s.esercizi.reduce((a, e) => a + (e.tipo === 'cardio' ? 0 : e.serie.reduce((b, st) => b + (+st.kg || 0) * (+st.rip || 0), 0)), 0); const d = new Date(s.inizio);
@@ -5757,12 +5930,13 @@ function startDay(id){
   LIVE.cid = CLX || null; LIVE.adj = CLX ? 1 : liveAdj(); { const RI = CLX ? null : rientroInfo(); if (RI) { LIVE.rientro = RI.gap; LIVE.ex.forEach(x => { if (x.tipo !== 'cardio' && x.serie.length > 2) x.serie = x.serie.slice(0, x.serie.length - 1); }); } } persistLive(); go('sessione');
 }
 function elapsedStr(){ if (!LIVE) return ''; const s = Math.floor((Date.now() - LIVE.inizio) / 1000); return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); }
+function restOff(){ if (!LIVE || !LIVE.rest) return 138.2; const tot = Math.max(1, LIVE.restTot || 60); const rem = Math.max(0, (LIVE.rest - Date.now()) / 1000); return (138.2 * (1 - Math.min(1, rem / tot))).toFixed(1); }
 function restStr(){ if (!LIVE || !LIVE.rest) return '00:00'; const s = Math.max(0, Math.ceil((LIVE.rest - Date.now()) / 1000)); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); }
 setInterval(() => {
   const el = document.querySelector('[data-elapsed]'); if (el) el.textContent = elapsedStr();
   document.querySelectorAll('[data-elapsed-timer]').forEach(x => { x.textContent = timerStr(); });
   const sh = document.querySelector('[data-elapsed-shift]'); if (sh && S && S.turnoAttivo) sh.textContent = fmtMin((Date.now() - S.turnoAttivo) / 60000);
-  if (LIVE && LIVE.rest) { const r = document.querySelector('[data-rest]'); if (r) r.textContent = restStr(); if (Date.now() >= LIVE.rest) { LIVE.rest = null; persistLive(); beep(); const c = $('#restcard'); if (c) c.hidden = true; tmrAfterRest(); } }
+  if (LIVE && LIVE.rest) { const r = document.querySelector('[data-rest]'); if (r) r.textContent = restStr(); const rg = document.querySelector('[data-rest-ring]'); if (rg) rg.style.strokeDashoffset = restOff(); if (Date.now() >= LIVE.rest) { LIVE.rest = null; persistLive(); beep(); const c = $('#restcard'); if (c) c.hidden = true; tmrAfterRest(); } }
 }, 1000);
 function finishLive(){
   const L = LIVE; if (!L) return;
@@ -5778,7 +5952,7 @@ function finishLive(){
   if (!CLX && lvAfter > lvBefore) { const its = avItemsFra(lvBefore, lvAfter).map(it => it[0]); S.avNew = { L: lvAfter, da: lvBefore, items: ((S.avNew && S.avNew.items) || []).concat(its) }; S.avLv = lvAfter; save(); }
   UI.route = 'allenati';
   UI.sheet = { k: 'summary', d: { sess, recs, xp: xpAfter - xpBefore, lvUp: lvAfter > lvBefore ? lvAfter : 0, vol } };
-  render(); if (!CLX) { pushSummary(); setTimeout(forzaAutoMap, 1500); }
+  render(); fxConfetti(recs.length ? 140 : 70); if (!CLX) { pushSummary(); setTimeout(forzaAutoMap, 1500); }
 }
 
 /* ---------- superserie: esercizi da fare alternati, un recupero dopo il giro ---------- */
@@ -5808,12 +5982,12 @@ function liveSetDone(i, j){
     const pend = G.filter(k => k !== i && L.ex[k].serie[j] && !L.ex[k].serie[j].ok);
     if (pend.length) { L.rest = null; const dopo = pend.filter(k => k > i); L.ssNext = { i: dopo.length ? dopo[0] : pend[0], j }; return; }
     const gDone = G.every(k => exFin(L.ex[k])); const rec = ssRec(L, G);
-    if (rec > 0 && !(gDone && G[G.length - 1] === L.ex.length - 1)) L.rest = Date.now() + rec * 1000;
+    if (rec > 0 && !(gDone && G[G.length - 1] === L.ex.length - 1)) { L.rest = Date.now() + rec * 1000; L.restTot = rec; }
     L.ssNext = null; if (!gDone) { const jj = j + 1; const k = G.find(x => L.ex[x].serie[jj] && !L.ex[x].serie[jj].ok); if (k != null) L.ssNext = { i: k, j: jj }; }
     return;
   }
   L.ssNext = null;
-  const rec = +e.target.rec || 0; const lastOfAll = i === L.ex.length - 1 && exFin(e); if (rec > 0 && !lastOfAll) L.rest = Date.now() + rec * 1000;
+  const rec = +e.target.rec || 0; const lastOfAll = i === L.ex.length - 1 && exFin(e); if (rec > 0 && !lastOfAll) { L.rest = Date.now() + rec * 1000; L.restTot = rec; }
 }
 // salva nella scheda la scelta superserie sì/no, così la prossima volta la riconosce da sola
 function ssPersist(list, on){
@@ -5899,6 +6073,7 @@ function liveExBlock(L, k, G, pos){
   const someOpen = e.serie.some(s => !s.ok); const sugUse = sug && sug.kg && someOpen && e.serie.some(s => !s.ok && num(s.kg) !== sug.kg);
   h += '<div class="boxes"><div class="box"><span class="tiny muted">' + (last ? 'Ultima volta · ' + esc(fmtD(last.data)) : 'Ultima volta') + '</span><span class="mono" style="font-weight:600;font-size:14px">' + (last ? last.e.serie.map(s => (e.tipo === 'cardio' ? (s.kg || '—') + 'm/' + (s.rip || '—') + '′' : (+s.kg ? fmtN(+s.kg) + '×' : '') + (s.rip || '—'))).join('  ') : 'Prima volta') + '</span></div>'
     + (sug ? '<div class="box acc"><span class="tiny">Consiglio per oggi</span><span class="mono" style="font-weight:600;font-size:14px">' + esc(sug.txt) + '</span>' + (sug.why ? '<span class="tiny" style="line-height:1.35;opacity:.85">' + esc(sug.why) + '</span>' : '') + (sugUse ? '<button type="button" class="btn sm" style="min-height:32px;margin-top:4px;align-self:flex-start" data-a="usesug" data-ei="' + k + '">Usa ' + fmtN(sug.kg) + ' kg</button>' : TM && sug.rip && someOpen && num(sug.rip) !== num(TG) ? '<button type="button" class="btn sm" style="min-height:32px;margin-top:4px;align-self:flex-start" data-a="usesug" data-ei="' + k + '">Usa ' + sug.rip + (e.unita === 'min' ? ' min' : ' s') + '</button>' : '') + '</div>' : '') + '</div>';
+  h += plateBox(e, k);
   if (isDB2(e.nome) && e.tipo !== 'cardio') h += dbBox(e, k);
   else if (att.hint && e.tipo !== 'cardio') h += '<span class="tiny muted" style="line-height:1.4">' + esc(att.hint) + '</span>';
   h += '<div class="stack" style="gap:6px"><div class="setrow head' + (TM ? ' t' : '') + '"><span>Serie</span><span>' + f1 + '</span><span>' + f2 + '</span>' + (TM ? '<span>Timer</span>' : '') + '<span></span></div>'
@@ -5923,7 +6098,7 @@ function renderSession(){
       + (N ? '<span class="chip acc" style="align-self:flex-start;white-space:normal">Adesso: ' + esc(L.ex[N.i].nome) + ' · serie ' + (N.j + 1) + '</span>' : '')
       + G.map((k, p) => (p ? '<div class="ssdiv" aria-hidden="true"></div>' : '') + liveExBlock(L, k, G, p)).join('') + '</div>';
   } else h += '<div class="card">' + liveExBlock(L, L.idx, G, 0) + '</div>';
-  h += '<div class="card ink" id="restcard"' + (L.rest ? '' : ' hidden') + '><div class="row"><div class="stack"><span class="eyebrow">Recupero</span><span class="mono" style="font-size:30px;font-weight:600" data-rest="1">' + restStr() + '</span></div><div class="row" style="gap:6px"><button type="button" class="btn sm" data-a="rest" data-v="-15">−15</button><button type="button" class="btn sm" data-a="rest" data-v="15">+15</button><button type="button" class="btn sm light" data-a="rest" data-v="0">Salta</button></div></div></div>';
+  h += '<div class="card ink" style="padding:14px" id="restcard"' + (L.rest ? '' : ' hidden') + '><div class="row"><div class="row start" style="gap:12px"><svg class="restring" viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="22" class="rt"/><circle cx="27" cy="27" r="22" class="rf" data-rest-ring="1" style="stroke-dashoffset:' + restOff() + '"/></svg><div class="stack" style="gap:0"><span class="eyebrow">Recupero</span><span class="mono" style="font-size:26px;font-weight:700" data-rest="1">' + restStr() + '</span></div></div><div class="row" style="gap:5px"><button type="button" class="btn sm" style="padding:0 9px" data-a="rest" data-v="-15">−15</button><button type="button" class="btn sm" style="padding:0 9px" data-a="rest" data-v="15">+15</button><button type="button" class="btn sm light" style="padding:0 10px" data-a="rest" data-v="0">Salta</button></div></div></div>';
   const prev = gi > 0 ? GS[gi - 1][0] : 0, nextG = GS[gi + 1];
   h += '<div class="grid2"><button type="button" class="btn" data-a="liveex" data-i="' + prev + '"' + (gi <= 0 ? ' disabled' : '') + '>' + ic('back', 18) + ' Precedente</button>' + (nextG ? '<button type="button" class="btn dark" data-a="liveex" data-i="' + nextG[0] + '">Successivo ' + ic('chev', 18) + '</button>' : '<button type="button" class="btn pri" data-a="finishlive">Termina</button>') + '</div>';
   if (nextG) h += '<button type="button" class="btn pri wide" data-a="finishlive">Termina allenamento</button>';
@@ -6346,7 +6521,7 @@ const A = {
   ssoff(ds){ const G = ssIdx(LIVE, +ds.ei); const L2 = G.map(k => LIVE.ex[k]); L2.forEach(x => { x.ss = null; }); LIVE.ssNext = null; ssPersist(L2, false); persistLive(); toast('Superserie separata'); render(); },
   swapsch(){ const d = sheetD(); d.sch = !d.sch; keepSheet(); render(); },
   swapgo(ds){ const d = sheetD(); const i = ds.ei != null ? +ds.ei : +d.ei; const nome = String(ds.n || d.nome || '').trim(); if (!nome) { toast('Scrivi o scegli l\'esercizio'); return; } const r = liveSwap(i, nome, !!d.sch); UI.sheet = null; if (!r) { toast('È già questo esercizio'); render(); return; } toast(r.nome + ' · carico: ' + r.att.lab.toLowerCase() + (r.last ? ', ripreso dall\'ultima volta' : !r.same ? ', scrivilo tu' : '')); render(); },
-  rest(ds){ const v = +ds.v; if (!LIVE.rest) return; if (v === 0) LIVE.rest = null; else LIVE.rest = Math.max(Date.now() + 1000, LIVE.rest + v * 1000); persistLive(); const c = $('#restcard'); if (c) c.hidden = !LIVE.rest; const r = document.querySelector('[data-rest]'); if (r) r.textContent = restStr(); },
+  rest(ds){ const v = +ds.v; if (!LIVE.rest) return; if (v === 0) LIVE.rest = null; else { LIVE.rest = Math.max(Date.now() + 1000, LIVE.rest + v * 1000); LIVE.restTot = Math.max(LIVE.restTot || 0, Math.ceil((LIVE.rest - Date.now()) / 1000)); } persistLive(); const c = $('#restcard'); if (c) c.hidden = !LIVE.rest; const r = document.querySelector('[data-rest]'); if (r) r.textContent = restStr(); },
   finishlive(){ UI.sheet = null; finishLive(); },
   discardlive(){ const cid = LIVE && LIVE.cid; LIVE = null; persistLive(); UI.sheet = null; if (cid && CLI[cid]) { UI.ctab = 'allenamenti'; go('clientept', { id: cid }); } else go('allenati'); },
   livebg(){ if (!LIVE) return; LIVE.bg = 1; persistLive(); UI.sheet = null; const cid = LIVE.cid; toast('Allenamento in pausa: lo riprendi dal riquadro in alto'); if (cid && CLI[cid]) { UI.ctab = 'allenamenti'; go('clientept', { id: cid }); } else go(S.profilo.ruolo === 'manager' ? ROOT_ROUTES.manager : 'allenati'); },
@@ -7000,7 +7175,7 @@ document.addEventListener('input', ev => {
   if (el.form && el.form.dataset && el.form.dataset.form === 'cibo' && /^(kcal|proteine|carboidrati|grassi)$/.test(el.name || '')) { el.dataset.touched = '1'; return; }
   if (el.dataset && el.dataset.bevin) { updateBevPreview(); return; }
   if (el.dataset && el.dataset.filter) { const q = el.value.trim().toLowerCase(); app.querySelectorAll('.li[data-name], .clirow[data-name]').forEach(li => { li.style.display = q && li.dataset.name.indexOf(q) < 0 ? 'none' : ''; }); return; }
-  if (el.dataset && el.dataset.live && LIVE) { let p = el.dataset.live.split('-'); let i = LIVE.idx; if (p.length === 3) { i = +p[0]; p = p.slice(1); } const s = LIVE.ex[i] && LIVE.ex[i].serie[+p[0]]; if (s) { s[p[1]] = el.value; const ex = LIVE.ex[i]; if (p[1] === 'rip' && isTimed(ex) && !s.ok) { const v = num(el.value); if (v > 0) { ex.tgtLive = v; const T = LIVE.tmr; if (T && T.i === i && T.j === +p[0] && Date.now() < T.t0) T.tgt = tmrTargetSec(ex, T.j); document.querySelectorAll('[data-tgt="' + i + '"]').forEach(x => { x.textContent = v; }); document.querySelectorAll('input[data-live^="' + i + '-"][data-live$="-rip"]').forEach(x => { if (x !== el) x.placeholder = v; }); } } persistLive(); } }
+  if (el.dataset && el.dataset.live && LIVE) { let p = el.dataset.live.split('-'); let i = LIVE.idx; if (p.length === 3) { i = +p[0]; p = p.slice(1); } const s = LIVE.ex[i] && LIVE.ex[i].serie[+p[0]]; if (s) { s[p[1]] = el.value; const ex = LIVE.ex[i]; if (p[1] === 'kg') { const pb = document.getElementById('plate-' + i); if (pb) pb.innerHTML = plateSvg(ex); } if (p[1] === 'rip' && isTimed(ex) && !s.ok) { const v = num(el.value); if (v > 0) { ex.tgtLive = v; const T = LIVE.tmr; if (T && T.i === i && T.j === +p[0] && Date.now() < T.t0) T.tgt = tmrTargetSec(ex, T.j); document.querySelectorAll('[data-tgt="' + i + '"]').forEach(x => { x.textContent = v; }); document.querySelectorAll('input[data-live^="' + i + '-"][data-live$="-rip"]').forEach(x => { if (x !== el) x.placeholder = v; }); } } persistLive(); } }
 });
 document.addEventListener('change', ev => {
   const el = ev.target;
