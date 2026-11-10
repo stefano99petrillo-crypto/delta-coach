@@ -548,23 +548,29 @@ function monthTotals(mk){
 
 /* ---------- nutrizione ---------- */
 const MICRO = [
-  ['fibre','Fibre','g',25,false], ['potassio','Potassio','mg',3500,false], ['calcio','Calcio','mg',950,false], ['ferro','Ferro','mg',11,false], ['magnesio','Magnesio','mg',350,false],
-  ['vitC','Vitamina C','mg',110,false], ['vitD','Vitamina D','µg',15,false], ['b12','Vitamina B12','µg',4,false],
+  ['fibre','Fibre','g',25,false], ['omega3','Omega 3 (EPA + DHA)','mg',250,false],
+  ['potassio','Potassio','mg',3500,false], ['calcio','Calcio','mg',950,false], ['magnesio','Magnesio','mg',350,false], ['ferro','Ferro','mg',11,false], ['zinco','Zinco','mg',11,false], ['iodio','Iodio','µg',150,false], ['selenio','Selenio','µg',70,false],
+  ['vitA','Vitamina A','µg',750,false], ['vitC','Vitamina C','mg',110,false], ['vitD','Vitamina D','µg',15,false], ['vitE','Vitamina E','mg',13,false], ['vitK','Vitamina K','µg',70,false], ['b6','Vitamina B6','mg',1.7,false], ['folati','Folati (B9)','µg',330,false], ['b12','Vitamina B12','µg',4,false],
   ['zuccheri','Zuccheri','g',90,true], ['saturi','Grassi saturi','g',22,true], ['sodio','Sodio','mg',2000,true] ];
+/* nutrienti aggiunti dopo: i pasti registrati prima non li hanno (mv assente), quindi non vanno letti come zero */
+const MICRO_NEW = ['omega3','zinco','iodio','selenio','vitA','vitE','vitK','b6','folati'];
+const MICRO_GRP = { fibre: 'Fibre e grassi buoni', potassio: 'Minerali', vitA: 'Vitamine' };
+function microCov(items){ let tot = 0, ok = 0; (items || []).forEach(i => { if (i.fonte === 'integratore') return; const k = +i.kcal || 0; if (k < 5) return; tot += k; if (i.mv >= 2) ok += k; }); return tot ? ok / tot : 0; }
+function microHasNew(items){ return microCov(items) >= 0.6; }
 const MACRO_KEYS = ['kcal','proteine','carboidrati','grassi'];
 const PASTI = [['colazione','Colazione'],['pranzo','Pranzo'],['cena','Cena'],['spuntino','Spuntini']];
 function foodFor(ds){ const mk = ds.slice(0, 7); return ((FOOD[mk] || {}).giorni || {})[ds] || []; }
 function setFood(ds, list){ const mk = ds.slice(0, 7); FOOD[mk] = FOOD[mk] || { giorni: {} }; FOOD[mk].giorni = FOOD[mk].giorni || {}; FOOD[mk].giorni[ds] = list; saveFood(mk); }
-function sumItems(items){ const t = {}; MACRO_KEYS.concat(MICRO.map(m => m[0])).forEach(k => { t[k] = 0; }); items.forEach(i => { Object.keys(t).forEach(k => { t[k] += +i[k] || 0; }); }); return t; }
-function avgMicros(days){ const out = {}; MICRO.forEach(m => { out[m[0]] = 0; }); let n = 0; for (let i = 0; i < days; i++) { const ds = addDays(isoDate(new Date()), -i); const it = foodFor(ds); if (!it.length) continue; n++; const t = sumItems(it); MICRO.forEach(m => { out[m[0]] += t[m[0]]; }); } if (n) MICRO.forEach(m => { out[m[0]] = Math.round(out[m[0]] / n * 10) / 10; }); return { n, out }; }
+function sumItems(items){ const t = {}; MACRO_KEYS.concat(MICRO.map(m => m[0])).forEach(k => { t[k] = 0; }); items.forEach(i => { Object.keys(t).forEach(k => { t[k] += +i[k] || (i.extra && +i.extra[k]) || 0; }); }); return t; }
+function avgMicros(days){ const out = {}; MICRO.forEach(m => { out[m[0]] = 0; }); let n = 0, n2 = 0; for (let i = 0; i < days; i++) { const ds = addDays(isoDate(new Date()), -i); const it = foodFor(ds); if (!it.length) continue; n++; const t = sumItems(it); const nw = microHasNew(it); if (nw) n2++; MICRO.forEach(m => { if (MICRO_NEW.indexOf(m[0]) < 0 || nw) out[m[0]] += t[m[0]]; }); } if (n) MICRO.forEach(m => { const d = MICRO_NEW.indexOf(m[0]) < 0 ? n : n2; if (d) out[m[0]] = Math.round(out[m[0]] / d * 10) / 10; else delete out[m[0]]; }); return { n, out }; }
 function estimateTarget(){ const E = energia(); return E ? { kcal: E.kcal, proteine: E.proteine, carboidrati: E.carboidrati, grassi: E.grassi } : null; }
-const NUTR_FIELDS = '"kcal":number,"proteine":number,"carboidrati":number,"grassi":number,"fibre":number,"zuccheri":number,"saturi":number,"sodio":number,"potassio":number,"calcio":number,"ferro":number,"magnesio":number,"vitC":number,"vitD":number,"b12":number,"alcol":number,"caffeina":number,"qualita":number,"pro":string,"contro":string';
+const NUTR_FIELDS = '"kcal":number,"proteine":number,"carboidrati":number,"grassi":number,"fibre":number,"zuccheri":number,"saturi":number,"sodio":number,"potassio":number,"calcio":number,"ferro":number,"magnesio":number,"zinco":number,"iodio":number,"selenio":number,"vitA":number,"vitC":number,"vitD":number,"vitE":number,"vitK":number,"b6":number,"folati":number,"b12":number,"omega3":number,"alcol":number,"caffeina":number,"qualita":number,"pro":string,"contro":string';
 function cleanFood(raw, pasto){
   const out = [];
   (Array.isArray(raw) ? raw : []).forEach(r => {
     if (!r || !r.nome) return;
     const it = { id: rid(), pasto, nome: String(r.nome).slice(0, 80), quantita: String(r.quantita || '').slice(0, 40), fonte: 'ai' };
-    MACRO_KEYS.concat(MICRO.map(m => m[0])).forEach(k => { const v = num(r[k]); it[k] = v != null && v >= 0 ? Math.round(v * 10) / 10 : 0; });
+    MACRO_KEYS.concat(MICRO.map(m => m[0])).forEach(k => { const v = num(r[k]); it[k] = v != null && v >= 0 ? Math.round(v * 10) / 10 : 0; }); if (MICRO_NEW.some(k => num(r[k]) != null)) it.mv = 2;
     it.alcol = Math.max(0, num(r.alcol) || 0); it.caffeina = Math.max(0, num(r.caffeina) || 0); if (num(r.qualita)) it.q = clamp(Math.round(num(r.qualita)), 1, 5); if (r.pro) it.pro = String(r.pro).slice(0, 320); if (r.contro) it.contro = String(r.contro).slice(0, 240);
     out.push(it);
   });
@@ -624,9 +630,9 @@ function energia(){
 }
 function microRef(){
   const sx = sexOf() || 'm'; const age = ageOf() || 30; const T = S.nutri.target; const e = energia(); const kcal = (T && T.kcal) || (e && e.kcal) || 2000;
-  return { fibre: Math.max(25, Math.round(kcal / 1000 * 12.5)), zuccheri: 90, saturi: Math.round(kcal * 0.1 / 9), sodio: 2000, potassio: 3500, calcio: age < 25 ? 1000 : 950, ferro: sx === 'f' && age < 50 ? 16 : 11, magnesio: sx === 'f' ? 300 : 350, vitC: sx === 'f' ? 95 : 110, vitD: 15, b12: 4 };
+  return { fibre: Math.max(25, Math.round(kcal / 1000 * 12.5)), zuccheri: 90, saturi: Math.round(kcal * 0.1 / 9), sodio: 2000, potassio: 3500, calcio: age < 25 ? 1000 : 950, ferro: sx === 'f' && age < 50 ? 16 : 11, magnesio: sx === 'f' ? 300 : 350, vitC: sx === 'f' ? 95 : 110, vitD: 15, b12: 4, omega3: 250, zinco: sx === 'f' ? 8 : 11, iodio: 150, selenio: 70, vitA: sx === 'f' ? 650 : 750, vitE: sx === 'f' ? 11 : 13, vitK: 70, b6: sx === 'f' ? 1.6 : 1.7, folati: 330 };
 }
-const MICRO_UL = { vitD: 100, calcio: 2500 };
+const MICRO_UL = { vitD: 100, calcio: 2500, zinco: 25, iodio: 600, selenio: 255, vitA: 3000, vitE: 300, b6: 12, folati: 1000, omega3: 5000 };
 const MICRO_INFO = {
   fibre: ['Sazietà, intestino regolare, glicemia e colesterolo più stabili.', 'Legumi, cereali integrali, verdura, frutta, frutta secca.'],
   zuccheri: ['Contano anche quelli di frutta e latte: il limite serve soprattutto per dolci, bibite e succhi.', 'Dolci, bibite, succhi, merendine, frutta.'],
@@ -638,9 +644,18 @@ const MICRO_INFO = {
   magnesio: ['Muscoli, energia, sonno e recupero.', 'Frutta secca, semi, cacao amaro, legumi, cereali integrali.'],
   vitC: ['Difese, collagene di tendini e pelle, assorbimento del ferro.', 'Agrumi, kiwi, peperoni, fragole, broccoli.'],
   vitD: ['Ossa e muscoli. Arriva soprattutto dal sole: dal cibo è normale assumerne poca.', 'Pesce grasso (salmone, sgombro), uova, funghi.'],
-  b12: ['Energia e sistema nervoso. Chi non mangia prodotti animali di solito la integra.', 'Carne, pesce, uova, latte e formaggi.']
+  b12: ['Energia e sistema nervoso. Chi non mangia prodotti animali di solito la integra.', 'Carne, pesce, uova, latte e formaggi.'],
+  omega3: ['Cuore, cervello e infiammazione sotto controllo. Qui contano solo EPA e DHA, quelli del pesce: l\'ALA di noci e semi di lino si converte poco. 250 mg al giorno sono circa due porzioni di pesce grasso a settimana.', 'Salmone, sgombro, sardine, alici, aringa; olio di alghe per chi non mangia pesce.'],
+  zinco: ['Difese immunitarie, testosterone, guarigione dei tessuti. Sudando molto se ne perde di più.', 'Carne rossa, crostacei e molluschi, legumi, semi di zucca, formaggi stagionati.'],
+  iodio: ['Serve alla tiroide, che regola il metabolismo. La stima dipende molto dal sale: conta se usi quello iodato.', 'Sale iodato, pesce di mare, crostacei, latte e yogurt, uova.'],
+  selenio: ['Antiossidante, lavora con la tiroide e protegge i muscoli dallo stress dell\'allenamento.', 'Pesce, uova, carne, cereali integrali; una o due noci del Brasile bastano per un giorno.'],
+  vitA: ['Vista, pelle e difese. Contano sia il retinolo dei cibi animali sia il betacarotene di verdura e frutta arancione.', 'Carote, zucca, patate dolci, spinaci, uova, latte e formaggi, fegato.'],
+  vitE: ['Protegge le cellule dall\'ossidazione, anche quella prodotta dall\'allenamento intenso.', 'Olio extravergine, mandorle, nocciole, semi di girasole, avocado.'],
+  vitK: ['Coagulazione del sangue e ossa, insieme a calcio e vitamina D. Se prendi anticoagulanti parlane con il medico prima di cambiare abitudini.', 'Verdure a foglia verde (spinaci, cavolo, bietole, rucola), broccoli, olio.'],
+  b6: ['Aiuta a usare le proteine e a produrre energia: il fabbisogno sale con le proteine.', 'Pollo e tacchino, pesce, patate, banane, ceci, pistacchi.'],
+  folati: ['Globuli rossi e rinnovo delle cellule. Il massimo sicuro vale per l\'acido folico di integratori e cibi arricchiti, non per quello naturale.', 'Verdure a foglia, legumi, asparagi, agrumi, cereali integrali.']
 };
-const SUPP_TO_MICRO = { 'Vitamina D':'vitD', 'Vitamina C':'vitC', 'Vitamina B12':'b12', 'Magnesio':'magnesio', 'Calcio':'calcio', 'Ferro':'ferro', 'Potassio':'potassio' };
+const SUPP_TO_MICRO = { 'Vitamina D':'vitD', 'Vitamina C':'vitC', 'Vitamina B12':'b12', 'Magnesio':'magnesio', 'Calcio':'calcio', 'Ferro':'ferro', 'Potassio':'potassio', 'Vitamina A':'vitA', 'Vitamina E':'vitE', 'Vitamina K':'vitK', 'Vitamina B6':'b6', 'Zinco':'zinco', 'Selenio':'selenio', 'Iodio':'iodio', 'Acido folico':'folati', 'Omega 3 (EPA+DHA)':'omega3' };
 function suppMicros(){
   const out = {}, src = {};
   if (S.nutri.contaInteg === false) return { out, src };
@@ -2174,11 +2189,152 @@ function sheetExtra(d){
     + '<div class="grid2">' + (x ? '<button type="button" class="btn ghost" data-a="exdel" data-id="' + x.id + '">Elimina</button>' : '<button type="button" class="btn" data-a="closesheet">Annulla</button>') + '<button class="btn pri" type="submit">Salva</button></div></form>';
 }
 
+/* ---------- andamento dell'allenamento: settimane mobili di 7 giorni che finiscono in "fine" ---------- */
+function pWeeks(nw, fine){ const W = []; for (let i = nw - 1; i >= 0; i--) { const a = addDays(fine, -(7 * i + 6)); W.push({ da: a, a: addDays(a, 6) }); } return W; }
+function pWi(W, ds){ for (let i = 0; i < W.length; i++) if (ds >= W[i].da && ds <= W[i].a) return i; return -1; }
+function pWLab(W){ return i => { const d = parseDate(W[i].da); return W.length > 6 ? (i % 2 === 0 || i === W.length - 1 ? d.getDate() + '/' + (d.getMonth() + 1) : '') : d.getDate() + ' ' + MM[d.getMonth()]; }; }
+function wBars(vals, o){
+  o = o || {}; const mx = Math.max(o.min || 1e-9, o.line || 0, ...vals.map(v => v || 0)); const fitti = vals.length > 8;
+  return '<div class="nbars' + (fitti ? ' fitti' : '') + '" style="grid-template-columns:repeat(' + vals.length + ',minmax(0,1fr));height:' + (o.h || 104) + 'px">' + vals.map((v, i) => '<span class="nbar ' + (!(v > 0) ? 'vuoto' : o.cls ? o.cls(v, i) : 'neu') + '" role="img" aria-label="' + esc(o.aria ? o.aria(v, i) : String(v || 0)) + '"><span class="col">' + (o.line ? '<b style="bottom:' + Math.min(100, o.line / mx * 100).toFixed(1) + '%"></b>' : '') + '<i style="height:' + (v > 0 ? Math.max(4, v / mx * 100).toFixed(1) : 0) + '%"></i></span><span class="lab">' + (o.lab ? o.lab(i) : '') + '</span></span>').join('') + '</div>';
+}
+function sintList(L){ return L.map(x => '<div class="sint"><span class="dot ' + (x[0] === 'ok' ? 'green' : x[0] === 'acc' ? 'red' : x[0] === 'warn' ? 'amber' : '') + '"></span><span class="small" style="line-height:1.45">' + esc(x[1]) + '</span></div>').join(''); }
+function pesiList(){ if (CLX) return ((CLI[CLX] || {}).misure || []).filter(x => x.peso).map(x => ({ data: x.data, peso: +x.peso })).sort((a, b) => a.data < b.data ? -1 : 1); return pesoEntries(); }
+function aPeriodo(nw, fine){
+  const W = pWeeks(nw, fine).map(w => Object.assign(w, { n: 0, extra: 0, vol: 0, sets: 0, min: 0 })); const inizio = W[0].da; const t0 = parseDate(inizio).getTime(), t1 = parseDate(addDays(fine, 1)).getTime();
+  const list = sessions().filter(s => s.inizio >= t0 && s.inizio < t1); const mus = {}; MUS_G.forEach(g => { mus[g] = 0; }); const ex = {};
+  list.forEach(s => { const w = W[pWi(W, isoDate(s.inizio))]; if (!w) return; w.n++; w.min += +s.durMin || 0;
+    (s.esercizi || []).forEach(e => { const ns = (e.serie || []).length; MUSCOLI.forEach(m => { if (mus[m[0]] != null && m[1].test(e.nome) && !(m[2] && m[2].test(e.nome))) mus[m[0]] += ns; });
+      if (e.tipo === 'cardio') return; let b = 0, bs = null, mr = 0;
+      (e.serie || []).forEach(st => { w.sets++; w.vol += (+st.kg || 0) * (+st.rip || 0); const v = e1rm(st.kg, st.rip); if (v > b) { b = v; bs = st; } if ((+st.rip || 0) > mr) mr = +st.rip; });
+      const key = exKey(e.nome); const o = ex[key] = ex[key] || { k: key, nome: e.nome, pts: [], u: '' };
+      if (b > 0) { if (o.u !== 'kg') { o.pts = []; o.u = 'kg'; } o.pts.push({ t: s.inizio, v: b, kg: +bs.kg, rip: +bs.rip }); }
+      else if (mr > 0 && o.u !== 'kg') { o.u = e.unita === 'sec' ? 's' : 'rip'; o.pts.push({ t: s.inizio, v: mr }); } }); });
+  (CLX ? [] : S.attivita).forEach(a => { const w = W[pWi(W, a.data)]; if (w) w.extra++; });
+  const av = l => l.reduce((a, x) => a + x.v, 0) / l.length;
+  const EX = Object.keys(ex).map(k => ex[k]).filter(o => o.pts.length >= 2).map(o => { const p = o.pts; const m = Math.max(1, Math.round(p.length / 3)); o.da = av(p.slice(0, m)); o.a = av(p.slice(-m)); o.pct = (o.a - o.da) / o.da * 100; o.cls = o.pct >= 2.5 ? 'su' : o.pct <= -2.5 ? 'giu' : 'pari'; return o; }).sort((a, b) => b.pct - a.pct);
+  const sum = k => W.reduce((a, w) => a + w[k], 0); const R = { nw, fine, inizio, W, list, n: list.length, extra: sum('extra'), vol: sum('vol'), sets: sum('sets'), min: sum('min'), mus, EX, soli: Object.keys(ex).filter(k => ex[k].pts.length === 1).length };
+  R.su = EX.filter(o => o.cls === 'su'); R.pari = EX.filter(o => o.cls === 'pari'); R.giu = EX.filter(o => o.cls === 'giu'); R.forza = EX.length ? EX.reduce((a, o) => a + clamp(o.pct, -30, 30), 0) / EX.length : null;
+  R.rec = computeRecords().recs.filter(r => r.data >= t0 && r.data < t1).length;
+  const pe = pesiList().filter(x => x.data >= addDays(inizio, -3) && x.data <= fine); R.peso = pe.length > 1 ? { da: pe[0].peso, a: pe[pe.length - 1].peso, d: pe[pe.length - 1].peso - pe[0].peso } : null;
+  const M = CLX ? [] : mattinoList().filter(x => x.data >= inizio && x.data <= fine); R.sonno = M.length >= 3 ? avgOf(M, 'ore') : null;
+  return R;
+}
+function aSintesi(R, P, goal){
+  const out = []; if (!R.n && !R.extra) return out; const tot = R.n + R.extra; const avg = tot / R.nw; const f1 = v => fmtN(v, 1); const pc = v => (v > 0 ? '+' : '−') + fmtN(Math.abs(v), 1) + '%';
+  if (avg >= goal - 0.3) out.push(['ok', 'Costanza piena: ' + f1(avg) + ' allenamenti a settimana in media, la scheda ne prevede ' + goal + '.']);
+  else if (avg >= goal * 0.7) out.push(['warn', 'In media ' + f1(avg) + ' allenamenti a settimana su ' + goal + ' della scheda: ti manca poco per essere regolare.']);
+  else out.push(['acc', 'In media ' + f1(avg) + ' allenamenti a settimana su ' + goal + ' della scheda. Qui è la costanza a frenare i risultati, più di qualunque dettaglio su esercizi e carichi.']);
+  const vuote = R.W.filter(w => !w.n && !w.extra).length; if (vuote && R.nw > 1) out.push(['warn', vuote === 1 ? 'Una settimana senza allenamenti.' : vuote + ' settimane senza allenamenti.']);
+  if (P && (P.n + P.extra) > 0) { const d = tot - (P.n + P.extra); if (Math.abs(d) >= Math.max(2, R.nw / 2)) out.push([d > 0 ? 'ok' : 'warn', (d > 0 ? d + ' allenamenti in più' : Math.abs(d) + ' allenamenti in meno') + ' rispetto alle ' + R.nw + ' settimane prima.']); }
+  if (R.EX.length) { const cnt = R.su.length + ' in crescita, ' + R.pari.length + ' fermi, ' + R.giu.length + ' in calo';
+    if (R.su.length > R.giu.length && R.forza >= 1) out.push(['ok', 'Forza in crescita: su ' + R.EX.length + ' esercizi confrontabili ' + cnt + ' (media ' + pc(R.forza) + ').' + (R.su[0] ? ' Il migliore: ' + R.su[0].nome + ' ' + pc(R.su[0].pct) + '.' : '')]);
+    else if (R.giu.length > R.su.length && R.forza <= -1) { out.push(['acc', 'Forza in calo: su ' + R.EX.length + ' esercizi confrontabili ' + cnt + ' (media ' + pc(R.forza) + '). Il più colpito: ' + R.giu[R.giu.length - 1].nome + ' ' + pc(R.giu[R.giu.length - 1].pct) + '.']);
+      if (R.peso && R.peso.d <= -1) out.push(['', 'Nel frattempo sei sceso di ' + f1(Math.abs(R.peso.d)) + ' kg: perdere un po\' di forza mentre dimagrisci è normale. Tieni alti i carichi sugli esercizi base anche a costo di fare meno serie.']);
+      else if (R.sonno != null && R.sonno < 6.5) out.push(['', 'Dormi in media ' + f1(R.sonno) + ' ore: con meno di 7 la forza fatica a salire. È la prima cosa da sistemare.']);
+      else if (avg < goal * 0.7) out.push(['', 'Con così pochi allenamenti ogni seduta riparte quasi da capo: la forza cala per la frequenza, non per la scheda.']); }
+    else out.push(['', 'Forza stabile: su ' + R.EX.length + ' esercizi confrontabili ' + cnt + '.']);
+    const st = R.pari.filter(o => o.pts.length >= 4 && o.u === 'kg'); if (st.length) out.push(['warn', 'Fermi da più sedute: ' + st.slice(0, 3).map(o => o.nome + ' (' + o.pts.length + ')').join(', ') + '. Cambia il range di ripetizioni, aggiungi una serie o passa a una variante per qualche settimana.']); }
+  else if (R.n) out.push(['', 'Per leggere la forza serve fare lo stesso esercizio almeno due volte nel periodo: per ora non ci sono esercizi confrontabili.']);
+  if (P && P.vol > 0 && R.vol > 0) { const d = (R.vol - P.vol) / P.vol * 100; if (d >= 30) out.push(['warn', 'Volume salito del ' + Math.round(d) + '% rispetto al periodo prima: è un aumento brusco, tieni d\'occhio dolori articolari e sonno.']); else if (d >= 8) out.push(['ok', 'Volume in salita del ' + Math.round(d) + '% rispetto al periodo prima: progressione graduale, quella giusta.']); else if (d <= -20) out.push(['', 'Volume sceso del ' + Math.round(-d) + '% rispetto al periodo prima.']); }
+  if (R.sets) { const poco = MUS_G.filter(g => R.mus[g] / R.nw < 4); if (poco.length && poco.length < MUS_G.length) out.push(['warn', 'Poco lavoro per ' + poco.join(', ').toLowerCase() + ': meno di 4 serie a settimana. Per crescere ne servono circa 10 per gruppo, per mantenere 4-6.']); }
+  if (R.rec) out.push(['ok', R.rec + (R.rec === 1 ? ' nuovo record' : ' nuovi record') + ' nel periodo.']);
+  if (R.peso && Math.abs(R.peso.d) >= 0.3) out.push(['', 'Peso corporeo: ' + (R.peso.d > 0 ? '+' : '−') + f1(Math.abs(R.peso.d)) + ' kg (da ' + f1(R.peso.da) + ' a ' + f1(R.peso.a) + ').']);
+  return out;
+}
+function wtabBar(){ const t = UI.wtab === 'andamento' ? 'andamento' : 'oggi'; return '<div class="seg" role="tablist">' + [['oggi', 'Allenati'], ['andamento', 'Andamento']].map(x => '<button type="button" role="tab" aria-selected="' + (t === x[0]) + '" data-a="wtab" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>'; }
+function perNav(nw, fine, oggi, act, inizio){ return '<div class="row"><button type="button" class="btn sm" data-a="' + act + '" data-v="-1" aria-label="Periodo precedente">' + ic('back', 16) + '</button><span style="font-weight:700;text-align:center">' + (fine === oggi ? 'Ultime ' + nw + ' settimane' : esc(fmtD(parseDate(inizio))) + ' – ' + esc(fmtD(parseDate(fine)))) + '</span><button type="button" class="btn sm" data-a="' + act + '" data-v="1" aria-label="Periodo successivo"' + (fine === oggi ? ' disabled' : '') + '>' + ic('chev', 16) + '</button></div>'; }
+function tabAllenAndamento(){
+  const oggi = isoDate(new Date()); const nw = UI.wper === 12 ? 12 : 4; const fine = UI.wfine && UI.wfine <= oggi ? UI.wfine : oggi; const R = aPeriodo(nw, fine); const P = aPeriodo(nw, addDays(R.inizio, -1)); const goal = clamp(S.scheda.giorni.length || 3, 2, 6); const chi = CLX ? ((CLI[CLX] || {}).nome || 'il cliente') : '';
+  let h = '<div class="seg" role="tablist"><button type="button" role="tab" aria-selected="' + (nw === 4) + '" data-a="wper" data-v="4">4 settimane</button><button type="button" role="tab" aria-selected="' + (nw === 12) + '" data-a="wper" data-v="12">12 settimane</button></div>' + perNav(nw, fine, oggi, 'wfine', R.inizio);
+  if (!R.n && !R.extra) return h + '<div class="empty">Nessun allenamento in questo periodo. Completa le sedute dalla scheda: qui vedrai costanza, forza, volume e muscoli allenati nel tempo.</div>';
+  const tot = R.n + R.extra, ptot = P.n + P.extra; const avg = tot / nw; const lab = pWLab(R.W);
+  h += '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">Allenamenti a settimana</span><span class="big-num" style="font-size:28px">' + fmtN(avg, 1) + ' <span class="small muted">/ ' + goal + ' della scheda</span></span></div>' + (ptot ? '<span class="chip ' + (tot > ptot ? 'ok' : tot < ptot ? 'warn' : '') + '">' + (tot === ptot ? 'come prima' : (tot > ptot ? '+' : '−') + Math.abs(tot - ptot) + ' sul periodo prima') + '</span>' : '') + '</div>'
+    + wBars(R.W.map(w => w.n + w.extra), { line: goal, min: goal, lab, cls: v => v >= goal ? 'ok' : 'neu', aria: (v, i) => 'Settimana dal ' + fmtD(parseDate(R.W[i].da)) + ': ' + v + ' allenamenti' })
+    + '<div class="legend" style="flex-wrap:wrap;gap:6px 12px"><span><i style="background:var(--ok)"></i>obiettivo raggiunto</span><span><i style="background:var(--accent)"></i>sotto</span><span style="margin-left:auto">— ' + goal + ' a settimana</span></div>'
+    + '<span class="tiny muted" style="line-height:1.4">' + R.n + (R.n === 1 ? ' seduta' : ' sedute') + ' con la scheda' + (R.extra ? ' e ' + R.extra + (R.extra === 1 ? ' altra attività' : ' altre attività') : '') + '. Ogni colonna sono 7 giorni: l\'ultima finisce ' + (fine === oggi ? 'oggi' : esc(fmtD(parseDate(fine)))) + '.</span></div>';
+  const SI = aSintesi(R, P, goal); if (SI.length) h += '<div class="card"><h2>In sintesi</h2>' + sintList(SI) + '</div>';
+  if (R.n) {
+    h += '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">Forza</span><span class="big-num" style="font-size:28px">' + (R.forza == null ? '—' : (R.forza > 0 ? '+' : R.forza < 0 ? '−' : '') + fmtN(Math.abs(R.forza), 1) + '%') + '</span></div>' + (R.EX.length ? '<span class="chip ' + (R.forza >= 1 ? 'ok' : R.forza <= -1 ? 'acc' : '') + '">' + (R.forza >= 1 ? 'in crescita' : R.forza <= -1 ? 'in calo' : 'stabile') + '</span>' : '') + '</div>';
+    if (!R.EX.length) h += '<span class="small muted" style="line-height:1.45">Serve ripetere lo stesso esercizio almeno due volte nel periodo per vedere se sale o scende.</span>';
+    else { const show = UI.wall ? R.EX : R.EX.slice(0, 6).concat(R.EX.length > 8 ? R.EX.slice(-2) : R.EX.slice(6)); const fv = (o, v) => o.u === 'kg' ? fmtN(v, v % 1 ? 1 : 0) + ' kg' : Math.round(v) + (o.u === 's' ? ' s' : ' rip');
+      h += '<div class="row" style="gap:6px;justify-content:flex-start;flex-wrap:wrap"><span class="chip ok">' + R.su.length + ' in crescita</span><span class="chip">' + R.pari.length + ' fermi</span><span class="chip' + (R.giu.length ? ' acc' : '') + '">' + R.giu.length + ' in calo</span></div><div>'
+        + show.map(o => '<button type="button" class="trow" data-a="wforza" data-v="' + esc(o.k) + '"><span class="grow"><span class="small" style="font-weight:650">' + esc(o.nome) + '</span><span class="tiny muted">' + (o.u === 'kg' ? 'massimale stimato ' : 'migliore serie ') + fv(o, o.da) + ' → ' + fv(o, o.a) + ' · ' + o.pts.length + ' sedute</span></span><span class="mono small" style="font-weight:700;color:' + (o.cls === 'su' ? 'var(--ok)' : o.cls === 'giu' ? 'var(--hot)' : 'var(--muted)') + '">' + (o.cls === 'pari' ? '=' : o.pct > 0 ? '▲' : '▼') + ' ' + fmtN(Math.abs(o.pct), 1) + '%</span></button>').join('') + '</div>'
+        + (R.EX.length > show.length || UI.wall ? '<button type="button" class="link small" data-a="wall">' + (UI.wall ? 'Mostra meno' : 'Mostra tutti i ' + R.EX.length + ' esercizi') + '</button>' : '');
+      h += '<span class="tiny muted" style="line-height:1.4">Per ogni esercizio confronto le prime sedute del periodo con le ultime. Il massimale stimato (da peso e ripetizioni della serie migliore) permette di paragonare 80 kg × 8 con 85 kg × 5. Sotto il 2,5% di differenza lo conto come fermo.' + (R.soli ? ' ' + R.soli + (R.soli === 1 ? ' esercizio fatto' : ' esercizi fatti') + ' una volta sola: non confrontabili.' : '') + ' Tocca un esercizio per il grafico completo.</span>'; }
+    h += '</div>';
+    const pv = P.vol > 0 ? (R.vol - P.vol) / P.vol * 100 : null;
+    h += '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">Volume a settimana</span><span class="big-num" style="font-size:28px">' + fmtK(R.vol / nw) + ' <span class="small muted">kg · ' + Math.round(R.sets / nw) + ' serie</span></span></div>' + (pv != null ? '<span class="chip ' + (pv >= 30 ? 'warn' : pv >= 5 ? 'ok' : '') + '">' + (Math.abs(pv) < 5 ? 'stabile' : (pv > 0 ? '+' : '−') + Math.round(Math.abs(pv)) + '% sul periodo prima') + '</span>' : '') + '</div>'
+      + wBars(R.W.map(w => w.vol), { lab, aria: (v, i) => 'Settimana dal ' + fmtD(parseDate(R.W[i].da)) + ': ' + fmtK(v) + ' kg, ' + R.W[i].sets + ' serie' })
+      + '<span class="tiny muted" style="line-height:1.4">Chili sollevati in tutto (peso × ripetizioni). Deve salire piano nel tempo: salti oltre il 30% da un periodo all\'altro aumentano il rischio di fastidi.</span></div>';
+    const mx = Math.max(12, ...MUS_G.map(g => R.mus[g] / nw));
+    h += '<div class="card"><h2>Serie a settimana per gruppo muscolare</h2>' + MUS_G.map(g => { const v = R.mus[g] / nw; const pvv = P.n ? P.mus[g] / nw : null; return '<div class="stack" style="gap:3px"><div class="row"><span class="small" style="font-weight:650">' + g + '</span><span class="mono tiny">' + fmtN(v, 1) + (pvv != null && Math.abs(v - pvv) >= 1 ? ' <span class="muted">(prima ' + fmtN(pvv, 1) + ')</span>' : '') + ' <span class="chip ' + (v >= 10 ? 'ok' : v >= 4 ? '' : 'warn') + '" style="margin-left:4px">' + (v >= 10 ? 'per crescere' : v >= 4 ? 'mantenimento' : 'poco') + '</span></span></div><div class="mbar"><span class="mf" style="width:' + Math.min(100, v / mx * 100).toFixed(0) + '%"></span><span style="position:absolute;top:-2px;bottom:-2px;left:' + (10 / mx * 100).toFixed(1) + '%;border-left:2px solid var(--fg);opacity:.5"></span></div></div>'; }).join('')
+      + '<span class="tiny muted" style="line-height:1.4">La tacca è a 10 serie a settimana, la soglia da cui la crescita muscolare diventa consistente negli studi; con 4-6 mantieni. Conto tutte le serie degli esercizi che coinvolgono il gruppo, anche come muscolo secondario.</span></div>';
+    const sm = R.list.filter(s => +s.durMin > 0);
+    h += '<div class="card"><div class="grid3"><div class="stack"><span class="big-num">' + R.rec + '</span><span class="tiny muted">record nel periodo' + (P.n ? ' · prima ' + P.rec : '') + '</span></div><div class="stack"><span class="big-num">' + (sm.length ? Math.round(sm.reduce((a, s) => a + +s.durMin, 0) / sm.length) + '′' : '—') + '</span><span class="tiny muted">durata media di una seduta</span></div><div class="stack"><span class="big-num">' + (R.peso ? (R.peso.d > 0 ? '+' : R.peso.d < 0 ? '−' : '') + fmtN(Math.abs(R.peso.d), 1) : '—') + '<span class="small muted"> kg</span></span><span class="tiny muted">peso corporeo nel periodo</span></div></div></div>'; }
+  if (!CLX) { const key = nw + '|' + fine;
+    h += '<div class="card"><div class="row"><h2>Lettura AI del periodo</h2>' + ic('spark', 20) + '</div>';
+    if (!aiReady()) h += '<span class="small muted">L\'AI non è disponibile in questa visualizzazione.</span>';
+    else if (UI.wtipsBusy) h += '<div class="busy" id="wtipsbox">' + (UI.wtips ? esc(UI.wtips) : 'Sto leggendo le ' + nw + ' settimane…') + '</div><button type="button" class="btn sm" data-a="stopai">Ferma</button>';
+    else if (UI.wtips && UI.wtipsKey === key) h += '<p class="prose" style="margin:0">' + esc(UI.wtips) + '</p><span class="tiny muted">Indicazioni generali: per cambiare la scheda parlane con il tuo PT.</span><button type="button" class="btn sm" data-a="aiallen">Aggiorna</button>';
+    else h += '<span class="small muted" style="line-height:1.5">L\'AI guarda insieme costanza, forza esercizio per esercizio, volume, muscoli, peso e sonno, e ti dice 3-5 cose concrete da cambiare.</span><button type="button" class="btn dark" data-a="aiallen"' + (R.n >= 3 ? '' : ' disabled') + '>Analizza il periodo</button>' + (R.n >= 3 ? '' : '<span class="tiny muted">Servono almeno 3 sedute.</span>');
+    h += '</div>'; }
+  return h;
+}
+
+/* ---------- andamento del recupero ---------- */
+const REC_T = [['sauna', 'Sauna'], ['freddo', 'Acqua fredda'], ['mobilita', 'Mobilità'], ['idro', 'Idromassaggio']];
+function rPeriodo(nw, fine){
+  const W = pWeeks(nw, fine); const inizio = W[0].da; const T = {}; REC_T.forEach(t => { T[t[0]] = { k: t[0], lab: t[1], w: W.map(() => 0), n: 0, min: 0 }; });
+  const pesi = {}; sessions().forEach(s => { if ((s.esercizi || []).some(e => e.tipo !== 'cardio')) pesi[isoDate(s.inizio)] = 1; }); let freddoPesi = 0;
+  (S.recupero || []).forEach(r => { const i = pWi(W, r.data); const t = T[r.tipo]; if (i < 0 || !t) return; t.w[i]++; t.n++; t.min += +r.min || 0; if (r.tipo === 'freddo' && pesi[r.data]) freddoPesi++; });
+  const M = mattinoList().filter(x => x.data >= inizio && x.data <= fine && num(x.ore) != null); const sw = W.map(() => []); M.forEach(m => { const i = pWi(W, m.data); if (i >= 0) sw[i].push(+m.ore); });
+  const R = { nw, fine, inizio, W, T, freddoPesi, tot: REC_T.reduce((a, t) => a + T[t[0]].n, 0), sonno: { n: M.length, ore: M.length ? avgOf(M, 'ore') : null, q: M.length ? avgOf(M, 'qualita') : null, sotto: M.filter(m => +m.ore < 7).length, w: sw.map(l => l.length ? l.reduce((a, b) => a + b, 0) / l.length : 0) } };
+  const PR = M.map(m => { try { return prontezza(m).v; } catch(e) { return null; } }).filter(v => v != null); R.pront = PR.length >= 3 ? Math.round(PR.reduce((a, b) => a + b, 0) / PR.length) : null;
+  return R;
+}
+function rVerdetto(k, t, R){
+  const a = t.n / R.nw; const mm = t.n ? t.min / t.n : 0; const f1 = v => fmtN(v, 1); const vl = v => f1(v) + (f1(v) === '1' ? ' volta' : ' volte');
+  if (!t.n) return { chip: ['', 'mai'], txt: k === 'sauna' ? 'Nessuna sauna nel periodo. I benefici studiati partono da 2-3 sedute a settimana da 15-20 minuti.' : k === 'freddo' ? 'Nessuna immersione nel periodo. La dose studiata è piccola: circa 11 minuti in tutto a settimana, divisi in 2-4 volte.' : k === 'mobilita' ? 'Nessuna seduta di mobilità nel periodo. Per migliorarla bastano 10 minuti, ma almeno 3 volte a settimana.' : 'Nessuna seduta nel periodo.' };
+  if (k === 'sauna') { let v = a >= 3.5 ? { chip: ['ok', 'fascia migliore'], txt: vl(a) + ' a settimana: sei nella fascia (4-7) a cui gli studi finlandesi associano i benefici maggiori per cuore e pressione. Bevi e reintegra i sali.' } : a >= 1.75 ? { chip: ['ok', 'fascia utile'], txt: vl(a) + ' a settimana: sei nella fascia (2-3) in cui gli studi vedono già meno rischio cardiovascolare e un recupero migliore. Con 4 o più i benefici crescono ancora.' } : a >= 1.25 ? { chip: ['', 'quasi'], txt: vl(a) + ' a settimana: sei vicino alla fascia utile, che parte da 2 sedute. Una in più ogni due settimane e ci sei.' } : { chip: ['warn', 'troppo poca'], txt: vl(a) + ' a settimana: fa bene per rilassarsi, ma è sotto la frequenza a cui gli studi vedono benefici misurabili. Punta a 2-3 sedute.' };
+    if (mm && mm < 12) v.txt += ' Le sedute sono brevi (' + Math.round(mm) + ' minuti in media): ne servono 15-20.'; return v; }
+  if (k === 'freddo') { const mw = t.min / R.nw; let v = mw >= 10 && a >= 1.5 ? { chip: ['ok', 'dose utile'], txt: vl(a) + ' e ' + Math.round(mw) + ' minuti a settimana: è la dose (circa 11 minuti in 2-4 volte) studiata per energia, umore e adattamento al freddo. Di più non serve.' } : { chip: ['warn', 'poca'], txt: vl(a) + ' e ' + f1(mw) + ' minuti a settimana: sotto la dose studiata, circa 11 minuti in tutto divisi in 2-4 volte.' };
+    if (R.freddoPesi) v.txt += ' ' + (R.freddoPesi === 1 ? 'Una volta' : R.freddoPesi + ' volte') + ' nello stesso giorno dei pesi: subito dopo l\'allenamento il freddo frena la crescita muscolare. Se punti alla massa lascia passare almeno 4-6 ore o usalo nei giorni di riposo.'; return v; }
+  if (k === 'mobilita') return a >= 2.5 ? { chip: ['ok', 'costante'], txt: vl(a) + ' a settimana: è la frequenza con cui la mobilità migliora davvero e resta.' } : a >= 1.5 ? { chip: ['', 'quasi'], txt: vl(a) + ' a settimana: mantieni quello che hai. Per guadagnare ampiezza di movimento servono 3 o più sedute, anche brevi.' } : { chip: ['warn', 'poca'], txt: vl(a) + ' a settimana: troppo poco per cambiare qualcosa. Meglio 10 minuti tre volte che mezz\'ora una volta.' };
+  return { chip: ['', f1(a) + ' a settimana'], txt: 'Rilassa i muscoli e aiuta a prendere sonno. Non ci sono soglie studiate: usalo quando ti fa stare bene.' };
+}
+function rtabBar(){ const t = UI.rtab === 'andamento' ? 'andamento' : 'oggi'; return '<div class="seg" role="tablist">' + [['oggi', 'Questa settimana'], ['andamento', 'Andamento']].map(x => '<button type="button" role="tab" aria-selected="' + (t === x[0]) + '" data-a="rtab" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>'; }
+function tabRecAndamento(){
+  const oggi = isoDate(new Date()); const nw = UI.rper === 12 ? 12 : 4; const fine = UI.rfine && UI.rfine <= oggi ? UI.rfine : oggi; const R = rPeriodo(nw, fine); const P = rPeriodo(nw, addDays(R.inizio, -1)); const lab = pWLab(R.W); const f1 = v => fmtN(v, 1);
+  let h = '<div class="seg" role="tablist"><button type="button" role="tab" aria-selected="' + (nw === 4) + '" data-a="rper" data-v="4">4 settimane</button><button type="button" role="tab" aria-selected="' + (nw === 12) + '" data-a="rper" data-v="12">12 settimane</button></div>' + perNav(nw, fine, oggi, 'rfine', R.inizio);
+  if (!R.tot && !R.sonno.n) return h + '<div class="empty">Nessun dato di recupero in questo periodo. Registra sauna, acqua fredda, mobilità e il check del mattino: qui vedrai quante volte a settimana li fai e se bastano per averne i benefici.</div>';
+  const SI = []; const V = {}; REC_T.forEach(t => { V[t[0]] = rVerdetto(t[0], R.T[t[0]], R); });
+  const S0 = R.sonno, SP = P.sonno;
+  if (S0.n >= 3) { SI.push([S0.ore >= 7 ? 'ok' : S0.ore >= 6 ? 'warn' : 'acc', 'Sonno: ' + f1(S0.ore) + ' ore in media, ' + S0.sotto + ' notti su ' + S0.n + ' sotto le 7 ore.' + (S0.ore < 7 ? ' È il recupero che pesa di più: prima di aggiungere sauna o freddo, sistema questo.' : '')]); if (SP.n >= 3 && Math.abs(S0.ore - SP.ore) >= 0.3) SI.push([S0.ore > SP.ore ? 'ok' : 'warn', 'Dormi ' + f1(Math.abs(S0.ore - SP.ore)) + ' ore ' + (S0.ore > SP.ore ? 'in più' : 'in meno') + ' a notte rispetto alle ' + nw + ' settimane prima.']); }
+  if (R.pront != null && P.pront != null && Math.abs(R.pront - P.pront) >= 4) SI.push([R.pront > P.pront ? 'ok' : 'warn', 'Prontezza del mattino ' + (R.pront > P.pront ? 'in salita' : 'in calo') + ': da ' + P.pront + ' a ' + R.pront + ' su 100 in media.']);
+  const okT = REC_T.filter(t => V[t[0]].chip[0] === 'ok').map(t => t[1].toLowerCase()), lowT = REC_T.filter(t => V[t[0]].chip[0] === 'warn').map(t => t[1].toLowerCase());
+  if (okT.length) SI.push(['ok', 'Nella frequenza che dà benefici: ' + okT.join(', ') + '.']); if (lowT.length) SI.push(['warn', 'Sotto la frequenza utile: ' + lowT.join(', ') + '.']);
+  if (P.tot || R.tot) { const d = R.tot - P.tot; if (P.tot && Math.abs(d) >= Math.max(2, nw / 2)) SI.push([d > 0 ? 'ok' : 'warn', (d > 0 ? d + ' sedute di recupero in più' : Math.abs(d) + ' sedute di recupero in meno') + ' rispetto alle ' + nw + ' settimane prima (' + R.tot + ' contro ' + P.tot + ').']); }
+  if (R.freddoPesi) SI.push(['warn', 'Acqua fredda nello stesso giorno dei pesi ' + (R.freddoPesi === 1 ? 'una volta' : R.freddoPesi + ' volte') + ': se punti alla massa, allontanala dall\'allenamento.']);
+  if (SI.length) h += '<div class="card"><h2>In sintesi</h2>' + sintList(SI) + '</div>';
+  h += '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">Sonno</span><span class="big-num" style="font-size:28px">' + (S0.n ? f1(S0.ore) : '—') + ' <span class="small muted">ore a notte</span></span></div>' + (S0.n >= 3 ? '<span class="chip ' + (S0.ore >= 7 ? 'ok' : S0.ore >= 6 ? 'warn' : 'acc') + '">' + (S0.ore >= 7 ? 'abbastanza' : S0.ore >= 6 ? 'un po\' poco' : 'troppo poco') + '</span>' : '') + '</div>';
+  if (S0.n) h += wBars(R.sonno.w, { line: 7, min: 8, lab, cls: v => v >= 7 ? 'ok' : v >= 6 ? 'q2' : 'q1', aria: (v, i) => 'Settimana dal ' + fmtD(parseDate(R.W[i].da)) + ': ' + (v ? f1(v) + ' ore in media' : 'nessun dato') }) + '<span class="tiny muted" style="line-height:1.4">Media per settimana dai check del mattino (' + S0.n + ' notti registrate' + (S0.q != null ? ', qualità media ' + f1(S0.q) + ' su 5' : '') + '). La riga è a 7 ore: sotto, forza e recupero ne risentono.' + (SP.n >= 3 ? ' Periodo prima: ' + f1(SP.ore) + ' ore.' : '') + '</span>';
+  else h += '<span class="small muted" style="line-height:1.45">Fai il check del mattino per qualche giorno: il sonno è la parte del recupero che conta di più.</span>';
+  h += '</div>';
+  REC_T.forEach(t => { const x = R.T[t[0]], p = P.T[t[0]], v = V[t[0]]; const a = x.n / nw, pa = p.n / nw;
+    h += '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">' + t[1] + '</span><span class="big-num" style="font-size:28px">' + f1(a) + ' <span class="small muted">a settimana' + (x.n ? ' · ' + Math.round(x.min / x.n) + ' min a seduta' : '') + '</span></span></div><span class="chip ' + v.chip[0] + '">' + v.chip[1] + '</span></div>'
+      + (x.n ? wBars(x.w, { h: 84, min: t[0] === 'sauna' ? 4 : 3, line: t[0] === 'sauna' ? 2 : t[0] === 'freddo' ? 2 : t[0] === 'mobilita' ? 3 : 0, lab, cls: (val) => (t[0] === 'idro' || val >= (t[0] === 'mobilita' ? 3 : 2)) ? 'ok' : 'neu', aria: (val, i) => 'Settimana dal ' + fmtD(parseDate(R.W[i].da)) + ': ' + val + ' volte' }) : '')
+      + '<span class="small" style="line-height:1.45">' + esc(v.txt) + '</span>'
+      + (p.n || x.n ? '<span class="tiny muted">' + (Math.abs(a - pa) < 0.3 ? 'Come nelle ' + nw + ' settimane prima.' : (a > pa ? 'In aumento' : 'In calo') + ': nelle ' + nw + ' settimane prima erano ' + f1(pa) + ' a settimana.') + '</span>' : '') + '</div>'; });
+  h += '<span class="tiny muted" style="line-height:1.45">Le soglie vengono da studi su grandi gruppi di persone (per la sauna soprattutto finlandesi, osservazionali): indicano una tendenza, non una garanzia per il singolo. Per il freddo le prove sono più deboli che per la sauna. Problemi di cuore o di pressione, o in gravidanza? Chiedi al medico prima di usare sauna e acqua fredda.</span>';
+  return h;
+}
+
 SCREENS.allenati = function(){
   const sc = S.scheda; const nd = nextDay(); const td = trainingDays(); const ws = weekKey(new Date()); const today = isoDate(new Date());
   const gd = {}; sessions().forEach(s => { gd[isoDate(s.inizio)] = 1; }); const weekN = [0,1,2,3,4,5,6].filter(i => gd[addDays(ws, i)]).length; const exN = (CLX ? [] : S.attivita).filter(a => a.data >= ws && a.data < addDays(ws, 7)).length; const goal = clamp(sc.giorni.length || 3, 2, 6);
   let h = '<div class="screen">' + topbar(sc.esempio ? 'Scheda di esempio' : sc.nome, 'Allenati');
   if (LIVE) h += liveBanner();
+  h += wtabBar(); if (UI.wtab === 'andamento') return h + tabAllenAndamento() + '</div>';
   h += schedeBar();
   h += '<div class="card"><div class="row"><span class="eyebrow">Questa settimana</span><span class="small"><strong class="mono">' + weekN + '</strong> di ' + goal + ' della scheda' + (exN ? ' · <strong class="mono">+' + exN + '</strong> extra' : '') + '</span></div><div class="wkstrip">' + ['L','M','M','G','V','S','D'].map((x, i) => { const ds = addDays(ws, i); return '<span class="wkd' + (gd[ds] ? ' on' : td[ds] ? ' on ex' : '') + (ds === today ? ' today' : '') + (ds > today ? ' fut' : '') + '"><i>' + (td[ds] ? ic('check', 16) : parseDate(ds).getDate()) + '</i>' + x + '</span>'; }).join('') + '</div>' + (CLX ? '' : '<button type="button" class="link small" style="align-self:flex-start;display:inline-flex;gap:6px;align-items:center" data-a="mcgo" data-d="' + today + '">' + ic('cal', 14) + ' ' + (mcProg() ? 'Apri il calendario' : 'Scegli i giorni in cui ti alleni') + '</button>') + '</div>';
   if (sc.esempio || !sc.giorni.length) h += '<button type="button" class="card" style="border:2px dashed var(--fg)" data-a="sheet" data-k="import"><div class="row start" style="gap:12px">' + ic('upload') + '<span class="stack"><span style="font-weight:700">Carica la tua scheda</span><span class="small muted" style="line-height:1.45">' + (sc.esempio ? 'Ora vedi una scheda di esempio. ' : '') + 'PDF, foto o testo: l\'app la trasforma in sedute ed esercizi.</span></span></div></button>';
@@ -2313,8 +2469,9 @@ SCREENS.recupero = function(){
   let h = '<div class="screen">' + topbar('', 'Recupero e longevità', { back: S.profilo.ruolo === 'cliente' ? 'home' : 'livelli' });
   h += '<div class="card ink" style="flex-direction:row;align-items:center;gap:16px"><svg role="img" aria-label="Punteggio recupero ' + (score == null ? 'non disponibile' : score + ' su 100') + '" width="72" height="72" viewBox="0 0 72 72" style="flex:0 0 auto"><circle cx="36" cy="36" r="30" fill="none" stroke="var(--ink-line)" stroke-width="7"/>'
     + (score != null ? '<circle cx="36" cy="36" r="30" fill="none" stroke="#7FD1B5" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (score / 100 * 188.5).toFixed(1) + ' 189" transform="rotate(-90 36 36)"/>' : '')
-    + '<text x="36" y="42" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" font-weight="600" fill="currentColor">' + (score == null ? '—' : score) + '</text></svg>'
+    + '<text x="36" y="42" text-anchor="middle" font-size="19" font-weight="700" fill="currentColor" style="font-variant-numeric:tabular-nums">' + (score == null ? '—' : score) + '</text></svg>'
     + '<div class="stack"><span class="eyebrow">Recupero della settimana</span><span class="small muted">' + (ck ? 'Sonno medio ' + fmtN(ck.sonnoOre) + ' h · ' : 'Fai il check del mattino · ') + week.length + (week.length === 1 ? ' sessione' : ' sessioni') + '</span></div></div>';
+  h += rtabBar(); if (UI.rtab === 'andamento') return h + tabRecAndamento() + '</div>';
   if (!mattinoOggi()) h += mattinoCard() || '<button type="button" class="btn sm" data-a="sheet" data-k="mattino">Fai il check del mattino di oggi</button>';
   h += sonnoCard();
   h += '<div class="stack" style="gap:8px"><h2>Registra una sessione</h2><div class="pills">'
@@ -2350,23 +2507,26 @@ function timerStr(){ if (!S || !S.timer) return '00:00'; const s = Math.floor((D
 function microCard(items){
   const ref = microRef(); const per = UI.mper || 'giorno';
   const split = list => [sumItems(list.filter(i => i.fonte !== 'integratore')), sumItems(list.filter(i => i.fonte === 'integratore'))];
-  let cibo, integ, n = 1;
+  let cibo, integ, n = 1, n2 = 0;
   if (per === 'giorno') { const sp = split(items); cibo = sp[0]; integ = sp[1]; }
-  else { cibo = {}; integ = {}; MICRO.forEach(m => { cibo[m[0]] = 0; integ[m[0]] = 0; }); n = 0; for (let i = 0; i < 7; i++) { const it = foodFor(addDays(isoDate(new Date()), -i)); if (!it.length) continue; n++; const sp = split(it); MICRO.forEach(m => { cibo[m[0]] += sp[0][m[0]]; integ[m[0]] += sp[1][m[0]]; }); } if (n) MICRO.forEach(m => { cibo[m[0]] /= n; integ[m[0]] /= n; }); }
+  else { cibo = {}; integ = {}; MICRO.forEach(m => { cibo[m[0]] = 0; integ[m[0]] = 0; }); n = 0; for (let i = 0; i < 7; i++) { const it = foodFor(addDays(isoDate(new Date()), -i)); if (!it.length) continue; n++; const nw = microHasNew(it); if (nw) n2++; const sp = split(it); MICRO.forEach(m => { if (MICRO_NEW.indexOf(m[0]) >= 0 && !nw) return; cibo[m[0]] += sp[0][m[0]]; integ[m[0]] += sp[1][m[0]]; }); } MICRO.forEach(m => { const d = MICRO_NEW.indexOf(m[0]) >= 0 ? n2 : n; if (d) { cibo[m[0]] /= d; integ[m[0]] /= d; } }); }
+  const naNew = per === 'giorno' ? !microHasNew(items) : !n2;
   if (per === 'giorno' && !items.length) return '';
   const hasSupp = MICRO.some(m => integ[m[0]] > 0); const sm = null;
-  const rows = MICRO.map(m => { const k = m[0]; const tot = cibo[k] + integ[k]; const r = ref[k]; return { k, lab: m[1], u: m[2], lim: m[4], cibo: cibo[k], integ: integ[k], tot, ref: r, pct: r ? tot / r * 100 : 0, ul: MICRO_UL[k], src: per === 'giorno' ? items.filter(i => i.fonte === 'integratore' && (+i[k] || 0) > 0).map(i => i.nome) : [] }; });
-  const need = rows.filter(r => !r.lim), lim = rows.filter(r => r.lim);
-  const reached = need.filter(r => r.pct >= 90).length; const low = need.filter(r => r.pct < 50).map(r => r.lab.toLowerCase()); const over = lim.filter(r => r.pct > 100).map(r => r.lab.toLowerCase());
+  const rows = MICRO.map(m => { const k = m[0]; const tot = cibo[k] + integ[k]; const r = ref[k]; return { k, lab: m[1], u: m[2], lim: m[4], cibo: cibo[k], integ: integ[k], tot, ref: r, pct: r ? tot / r * 100 : 0, ul: MICRO_UL[k], na: naNew && MICRO_NEW.indexOf(k) >= 0, src: per === 'giorno' ? items.filter(i => i.fonte === 'integratore' && (+i[k] || 0) > 0).map(i => i.nome) : [] }; });
+  const need = rows.filter(r => !r.lim), lim = rows.filter(r => r.lim); const val = need.filter(r => !r.na);
+  const reached = val.filter(r => r.pct >= 90).length; const low = val.filter(r => r.pct < 50).map(r => r.lab.toLowerCase().replace(/ \(.*$/, '')); const over = lim.filter(r => r.pct > 100).map(r => r.lab.toLowerCase());
   const sx = sexOf(), age = ageOf();
   let h = '<div class="card"><h2>Vitamine, minerali e fibre</h2>';
   h += '<div class="seg" role="tablist">' + [['giorno', 'Questo giorno'], ['sett', 'Media 7 giorni']].map(t => '<button type="button" role="tab" data-a="mper" data-v="' + t[0] + '" aria-selected="' + (per === t[0]) + '">' + t[1] + '</button>').join('') + '</div>';
   if (per === 'sett' && !n) return h + '<div class="empty">Registra qualche giorno di pasti per vedere la media.</div></div>';
   h += '<span class="small" style="line-height:1.5">' + (per === 'giorno' ? 'Quanto ne hai assunto' : 'Quanto ne assumi in media al giorno (' + n + (n === 1 ? ' giorno registrato' : ' giorni registrati') + ')') + ', rispetto a quanto serve a ' + (sx === 'f' ? 'una donna' : sx === 'm' ? 'un uomo' : 'un adulto') + (age ? ' di ' + age + ' anni' : '') + '. Tocca una voce per sapere a cosa serve e dove trovarla.</span>';
-  h += '<div class="row" style="gap:6px;justify-content:flex-start;flex-wrap:wrap"><span class="chip ok">' + reached + ' di ' + need.length + ' raggiunti</span>' + (low.length ? '<span class="chip acc" style="white-space:normal;text-align:left">Bassi: ' + esc(low.join(', ')) + '</span>' : '') + (over.length ? '<span class="chip acc" style="white-space:normal;text-align:left">Oltre il limite: ' + esc(over.join(', ')) + '</span>' : '') + '</div>';
-  h += '<span class="eyebrow" style="margin-top:8px">Da raggiungere</span>' + need.map(r => microRow(r, items, per, sm)).join('');
+  h += '<div class="row" style="gap:6px;justify-content:flex-start;flex-wrap:wrap"><span class="chip ok">' + reached + ' di ' + val.length + ' raggiunti</span>' + (low.length ? '<span class="chip acc" style="white-space:normal;text-align:left">Bassi: ' + esc(low.join(', ')) + '</span>' : '') + (over.length ? '<span class="chip acc" style="white-space:normal;text-align:left">Oltre il limite: ' + esc(over.join(', ')) + '</span>' : '') + '</div>';
+  if (naNew) h += '<div class="small" style="line-height:1.45;background:var(--soft);border-radius:10px;padding:10px 12px"><strong>9 nutrienti nuovi:</strong> omega 3, zinco, iodio, selenio, vitamine A, E, K, B6 e folati. ' + (per === 'giorno' ? 'I pasti di questo giorno sono stati registrati prima che l\'app li stimasse' : 'Nessun giorno di questa settimana li ha ancora') + ': li vedi come "non stimato", non come zero. Dai prossimi pasti registrati con l\'AI si riempiono da soli.</div>';
+  h += '<span class="eyebrow" style="margin-top:8px">Da raggiungere</span>' + need.map(r => (MICRO_GRP[r.k] ? '<span class="tiny muted" style="font-weight:700;margin-top:6px">' + MICRO_GRP[r.k] + '</span>' : '') + microRow(r, items, per, sm)).join('');
   h += '<span class="eyebrow" style="margin-top:10px">Da non superare</span>' + lim.map(r => microRow(r, items, per, sm)).join('');
   if (per === 'giorno') { const ex = {}; items.forEach(i => { if (i.extra) Object.keys(i.extra).forEach(k => { ex[k] = (ex[k] || 0) + (+i.extra[k] || 0); }); }); const ks = Object.keys(ex).filter(k => ex[k] > 0);
+    MICRO.forEach(m => { delete ex[m[0]]; }); const ks2 = Object.keys(ex).filter(k => ex[k] > 0); ks.length = 0; ks2.forEach(k => ks.push(k));
     if (ks.length) h += '<span class="eyebrow" style="margin-top:10px">Altro dagli integratori</span><dl class="kv">' + ks.map(k => { const ul = NUTMAP[k] ? NUTMAP[k][3] : null; const over = ul && ex[k] > ul; return '<dt>' + esc(nutLabel(k)) + '</dt><dd class="mono"' + (over ? ' style="color:var(--accent-deep);font-weight:700"' : '') + '>' + esc(fmtNut(k, ex[k])) + (ul ? (over ? ' · oltre il massimo di ' : ' · massimo ') + ul + ' ' + nutUnit(k) : '') + '</dd>'; }).join('') + '</dl>'; }
   if (hasSupp) h += '<div class="legend" style="margin-top:6px"><span><i style="background:var(--fg)"></i>dal cibo</span><span><i style="background:var(--p)"></i>dagli integratori presi</span></div>';
   h += '<span class="tiny muted" style="line-height:1.4">Riferimenti EFSA per adulti. Il cibo è stimato: guardalo come andamento, non al milligrammo.</span></div>';
@@ -2377,17 +2537,18 @@ function microRow(r, items, per, sm){
   let st = r.lim ? (r.pct > 100 ? ['acc', 'Oltre il limite'] : r.pct > 80 ? ['warn', 'Vicino al limite'] : ['ok', 'Ok']) : (r.pct >= 90 ? ['ok', 'Raggiunto'] : r.pct >= 50 ? ['warn', 'Quasi'] : ['acc', 'Basso']);
   if (r.ul && r.tot > r.ul) st = ['acc', 'Sopra il massimo sicuro'];
   if (r.k === 'magnesio' && r.integ > 250) st = ['acc', 'Integratore oltre il limite'];
+  if (r.na && !(r.ul && r.tot > r.ul)) st = ['', r.integ > 0 ? 'Solo integratori' : 'Non stimato'];
   const wF = Math.min(100, r.cibo / r.ref * 100), wS = Math.min(100 - wF, r.integ / r.ref * 100);
   let h = '<button type="button" class="mrow" data-a="microsel" data-k="' + r.k + '" aria-expanded="' + open + '"><div class="row"><span style="font-weight:700">' + r.lab + '</span><span class="chip ' + st[0] + '">' + st[1] + '</span></div>'
     + '<div class="mbar' + (r.lim ? ' lim' + (r.pct > 100 ? ' over' : '') : '') + '"><span class="mf" style="width:' + wF.toFixed(1) + '%"></span>' + (wS > 0 ? '<span class="ms" style="left:' + wF.toFixed(1) + '%;width:' + wS.toFixed(1) + '%"></span>' : '') + '</div>'
-    + '<span class="small">' + (r.lim ? 'Hai <strong class="mono">' + f(r.tot) + ' ' + r.u + '</strong> su un massimo di <span class="mono">' + f(r.ref) + ' ' + r.u + '</span>' : 'Hai <strong class="mono">' + f(r.tot) + ' ' + r.u + '</strong> di <span class="mono">' + f(r.ref) + ' ' + r.u + '</span> che ti servono') + ' · ' + Math.round(r.pct) + '%</span>'
+    + '<span class="small">' + (r.na ? (r.integ > 0 ? 'Dagli integratori <strong class="mono">' + f(r.integ) + ' ' + r.u + '</strong> di <span class="mono">' + f(r.ref) + ' ' + r.u + '</span>; il cibo di questi pasti non è stimato' : 'Non stimato per questi pasti · ti servono <span class="mono">' + f(r.ref) + ' ' + r.u + '</span> al giorno') + '</span>' : '') + (r.na ? '<span hidden>' : '') + (r.lim ? 'Hai <strong class="mono">' + f(r.tot) + ' ' + r.u + '</strong> su un massimo di <span class="mono">' + f(r.ref) + ' ' + r.u + '</span>' : 'Hai <strong class="mono">' + f(r.tot) + ' ' + r.u + '</strong> di <span class="mono">' + f(r.ref) + ' ' + r.u + '</span> che ti servono') + ' · ' + Math.round(r.pct) + '%</span>'
     + (r.integ ? '<span class="tiny muted">di cui ' + f(r.integ) + ' ' + r.u + ' dagli integratori' + (r.src.length ? ' (' + esc(r.src.join(', ')) + ')' : '') + '</span>' : '') + '</button>';
   if (open) {
     const info = MICRO_INFO[r.k] || ['', ''];
     let top = '';
     if (per === 'giorno') { const t = items.filter(i => (+i[r.k] || 0) > 0).sort((a, b) => b[r.k] - a[r.k]).slice(0, 3); if (t.length) top = '<span><strong>Oggi ti è arrivato soprattutto da:</strong> ' + esc(t.map(i => i.nome + ' (' + f(+i[r.k]) + ' ' + r.u + ')').join(', ')) + '</span>'; }
     const rest = r.lim ? Math.max(0, r.ref - r.tot) : Math.max(0, r.ref - r.tot);
-    h += '<div class="minfo"><span><strong>A cosa serve:</strong> ' + esc(info[0]) + '</span><span><strong>' + (r.lim ? 'Dove si trova:' : 'Dove lo trovi:') + '</strong> ' + esc(info[1]) + '</span>' + top + (per === 'giorno' ? '<span>' + (r.lim ? (r.tot > r.ref ? 'Oggi sei oltre di ' + f(r.tot - r.ref) + ' ' + r.u + '.' : 'Margine per oggi: ' + f(rest) + ' ' + r.u + '.') : (rest > 0 ? 'Per arrivare all\'obiettivo ti mancano ' + f(rest) + ' ' + r.u + '.' : 'Obiettivo di oggi raggiunto.')) + '</span>' : '') + (r.ul ? '<span class="tiny muted">Massimo sicuro tra cibo e integratori: ' + r.ul + ' ' + r.u + ' al giorno.</span>' : '') + (r.k === 'magnesio' ? '<span class="tiny muted">Il magnesio da integratori non dovrebbe superare 250 mg al giorno (quello del cibo non ha limiti).</span>' : '') + '</div>';
+    h += '<div class="minfo"><span><strong>A cosa serve:</strong> ' + esc(info[0]) + '</span><span><strong>' + (r.lim ? 'Dove si trova:' : 'Dove lo trovi:') + '</strong> ' + esc(info[1]) + '</span>' + top + (per === 'giorno' && !r.na ? '<span>' + (r.lim ? (r.tot > r.ref ? 'Oggi sei oltre di ' + f(r.tot - r.ref) + ' ' + r.u + '.' : 'Margine per oggi: ' + f(rest) + ' ' + r.u + '.') : (rest > 0 ? 'Per arrivare all\'obiettivo ti mancano ' + f(rest) + ' ' + r.u + '.' : 'Obiettivo di oggi raggiunto.')) + '</span>' : '') + (r.ul ? '<span class="tiny muted">Massimo sicuro tra cibo e integratori: ' + r.ul + ' ' + r.u + ' al giorno.</span>' : '') + (r.k === 'magnesio' ? '<span class="tiny muted">Il magnesio da integratori non dovrebbe superare 250 mg al giorno (quello del cibo non ha limiti).</span>' : '') + '</div>';
   }
   return h;
 }
@@ -2536,7 +2697,7 @@ SCREENS.profilo = function(){
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
   if (window.dcLogout) h += '<button type="button" class="btn wide ghost" data-a="dclogout">Esci dall\'account' + (window.dcEmail ? ' · ' + esc(window.dcEmail) : '') + '</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione 36 · web</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione 37 · web</p>';
   return h + '</div>';
 };
 
@@ -2602,7 +2763,7 @@ async function ciboAiGo(id){
   const d = sheetD(); keepSheet(); const ds = UI.nday; const it = foodFor(ds).find(i => i.id === id); if (!it || !aiReady()) return; const v = Object.assign({}, it, d.draft || {});
   d.busy = 'Ricalcolo i valori…'; d.err = ''; render(); aiCtl = new AbortController();
   try {
-    const raw = await Store.sample.json('Sei un assistente nutrizionale. Calcola i valori nutrizionali di UN SOLO alimento, con la quantità indicata (se manca usa una porzione media italiana). Restituisci una sola voce nell\'elenco.' + QUAL_RULES + ' Unità: grammi per macro, fibre, zuccheri e saturi; mg per sodio, potassio, calcio, ferro, magnesio e vitamina C; µg per vitamina D e B12. Rispondi solo con JSON: {"alimenti":[{"nome":string,"quantita":string,' + NUTR_FIELDS + '}],"nota":string}\nAlimento: ' + v.nome + (v.quantita ? '\nQuantità: ' + v.quantita : ''), { signal: aiCtl.signal });
+    const raw = await Store.sample.json('Sei un assistente nutrizionale. Calcola i valori nutrizionali di UN SOLO alimento, con la quantità indicata (se manca usa una porzione media italiana). Restituisci una sola voce nell\'elenco.' + QUAL_RULES + ' Unità: grammi per macro, fibre, zuccheri e saturi; mg per sodio, potassio, calcio, ferro, magnesio, zinco, vitamina C, vitamina E, vitamina B6 e omega3 (solo EPA + DHA, quindi pesce e alghe: 0 per gli altri cibi); µg per iodio, selenio, vitamina A (retinolo equivalenti), vitamina D, vitamina K, folati e B12. Rispondi solo con JSON: {"alimenti":[{"nome":string,"quantita":string,' + NUTR_FIELDS + '}],"nota":string}\nAlimento: ' + v.nome + (v.quantita ? '\nQuantità: ' + v.quantita : ''), { signal: aiCtl.signal });
     const n = cleanFood(raw && raw.alimenti, v.pasto || it.pasto)[0]; if (!n) throw { code: 'invalid_json' };
     const keep = { id: it.id, pasto: v.pasto || it.pasto, nome: v.nome || n.nome, quantita: n.quantita || v.quantita, via: it.via, tipo: it.tipo };
     setFood(ds, foodFor(ds).map(i => i.id === id ? Object.assign(n, keep) : i)); UI.sheet = null; UI.tips = null; toast('Valori ricalcolati: ' + Math.round(n.kcal) + ' kcal'); render();
@@ -3449,8 +3610,32 @@ function nSintesi(R, P){
   if (R.nC >= 5) { const we = R.C.filter(d => { const g = parseDate(d.ds).getDay(); return g === 0 || g === 6; }), wd = R.C.filter(d => { const g = parseDate(d.ds).getDay(); return g > 0 && g < 6; }); if (we.length && wd.length >= 2) { const a = we.reduce((x, d) => x + d.t.kcal, 0) / we.length, b = wd.reduce((x, d) => x + d.t.kcal, 0) / wd.length; if (Math.abs(a - b) >= 200) out.push(['', 'Nel fine settimana mangi in media ' + fmtK(Math.abs(a - b)) + ' kcal ' + (a > b ? 'in più' : 'in meno') + ' che negli altri giorni.']); } }
   if (R.peso && Math.abs(R.peso.d) >= 0.2) out.push(['', 'Peso: ' + (R.peso.d > 0 ? '+' : '−') + fmtN(Math.abs(R.peso.d), 1) + ' kg ' + per + ' (da ' + fmtN(R.peso.da, 1) + ' a ' + fmtN(R.peso.a, 1) + ' kg).']);
   if (P && P.nC >= 2 && R.nC >= 2) { const d = R.kcal - P.kcal; if (Math.abs(d) >= 80) out.push(['', 'Rispetto ai ' + R.n + ' giorni prima: ' + (d > 0 ? '+' : '−') + fmtK(Math.abs(d)) + ' kcal e ' + (R.p - P.p >= 0 ? '+' : '−') + Math.round(Math.abs(R.p - P.p)) + ' g di proteine al giorno.']); }
+  if (R.q != null && P && P.q != null && P.nC >= 2 && Math.abs(R.q - P.q) >= 5) out.push([R.q > P.q ? 'ok' : 'warn', 'Qualità del cibo ' + (R.q > P.q ? 'in salita' : 'in calo') + ': ' + R.q + ' su 100, ' + (R.q > P.q ? '+' : '−') + Math.abs(R.q - P.q) + ' rispetto ai ' + R.n + ' giorni prima.']);
   const vuoti = R.days.filter(d => !d.has && d.ds < isoDate(new Date())).length; if (vuoti >= Math.max(2, R.n / 4)) out.push(['warn', vuoti + ' giorni senza pasti registrati: le medie valgono solo per i giorni segnati.']);
   return out;
+}
+function nMicroAvg(R){ const C2 = R.C.filter(d => microHasNew(d.items)); const acc = {}; MICRO.forEach(m => { const L = MICRO_NEW.indexOf(m[0]) >= 0 ? C2 : R.C; acc[m[0]] = L.length ? L.reduce((a, d) => a + (+d.t[m[0]] || 0), 0) / L.length : null; }); return { acc, n2: C2.length }; }
+function qLab(v){ return v >= 80 ? 'ottima' : v >= 60 ? 'buona' : v >= 40 ? 'così così' : 'da migliorare'; }
+function nQCibi(R){
+  const m = {}; let tot = 0, bassa = 0, alta = 0;
+  R.days.forEach(d => d.items.forEach(i => { if (i.fonte === 'integratore' || !(+i.q > 0)) return; const kc = Math.max(20, +i.kcal || 0); const k = String(i.nome || '').trim().toLowerCase(); if (!k) return; const o = m[k] = m[k] || { nome: i.nome, kcal: 0, n: 0, qs: 0 }; o.kcal += kc; o.n++; o.qs += +i.q; tot += kc; if (+i.q <= 2) bassa += kc; if (+i.q >= 4) alta += kc; }));
+  const L = Object.keys(m).map(k => { m[k].q = m[k].qs / m[k].n; return m[k]; });
+  return { tot, pctBassa: tot ? Math.round(bassa / tot * 100) : null, pctAlta: tot ? Math.round(alta / tot * 100) : null, su: L.filter(x => x.q >= 4).sort((a, b) => b.n - a.n || b.kcal - a.kcal).slice(0, 4), giu: L.filter(x => x.q <= 2.2).sort((a, b) => b.kcal - a.kcal).slice(0, 4) };
+}
+function nQualita(R, P){
+  const D = R.days.filter(d => d.q != null); if (!D.length) return '';
+  const avg = R.q != null ? R.q : Math.round(D.reduce((a, d) => a + d.q, 0) / D.length); const pavg = P.nC >= 2 ? P.q : null; const dl = pavg != null ? avg - pavg : null;
+  const fitti = R.n > 10; const oggi = isoDate(new Date()); const C = nQCibi(R), CP = nQCibi(P);
+  let h = '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">Qualità del cibo</span><span class="big-num" style="font-size:28px">' + avg + ' <span class="small muted">/ 100 · ' + qLab(avg) + '</span></span></div>' + (dl != null ? '<span class="chip ' + (dl >= 3 ? 'ok' : dl <= -3 ? 'acc' : '') + '">' + (Math.abs(dl) < 3 ? 'stabile' : (dl > 0 ? '+' : '−') + Math.abs(dl) + ' sul periodo prima') + '</span>' : '') + '</div>';
+  h += '<div class="nbars' + (fitti ? ' fitti' : '') + '" style="grid-template-columns:repeat(' + R.n + ',minmax(0,1fr));height:110px">' + R.days.map(d => { const dd = parseDate(d.ds); return '<button type="button" class="nbar ' + (d.q == null ? 'vuoto' : d.q >= 60 ? 'q3' : d.q >= 40 ? 'q2' : 'q1') + (d.ds === oggi ? ' oggi' : '') + '" data-a="ngiorno" data-v="' + d.ds + '" aria-label="' + esc(fmtD(dd)) + ': ' + (d.q == null ? 'nessuna valutazione' : 'qualità ' + d.q + ' su 100') + '"><span class="col"><b style="bottom:60%"></b><i style="height:' + (d.q == null ? 0 : Math.max(4, d.q)) + '%"></i></span><span class="lab">' + (fitti ? (dd.getDate() === 1 || d === R.days[0] || dd.getDay() === 1 ? dd.getDate() : '') : GG[dd.getDay()].charAt(0).toUpperCase() + '<br>' + dd.getDate()) + '</span></button>'; }).join('') + '</div>';
+  h += '<div class="legend" style="flex-wrap:wrap;gap:6px 12px"><span><i style="background:var(--ok)"></i>buona (60+)</span><span><i style="background:var(--c)"></i>così così</span><span><i style="background:var(--hot)"></i>da migliorare</span><span style="margin-left:auto">— soglia 60</span></div>';
+  if (D.length >= 4) { const m = Math.floor(D.length / 2); const a = D.slice(0, m).reduce((x, d) => x + d.q, 0) / m, b = D.slice(-m).reduce((x, d) => x + d.q, 0) / m; const best = D.slice().sort((x, y) => y.q - x.q)[0], worst = D.slice().sort((x, y) => x.q - y.q)[0];
+    h += '<span class="small" style="line-height:1.45">' + (Math.abs(b - a) < 5 ? 'Dentro il periodo la qualità è rimasta costante.' : b > a ? 'Dentro il periodo sta salendo: da ' + Math.round(a) + ' nella prima metà a ' + Math.round(b) + ' nella seconda.' : 'Dentro il periodo sta scendendo: da ' + Math.round(a) + ' nella prima metà a ' + Math.round(b) + ' nella seconda.') + (best.ds !== worst.ds ? ' Giorno migliore ' + esc(fmtD(parseDate(best.ds))) + ' (' + best.q + '), peggiore ' + esc(fmtD(parseDate(worst.ds))) + ' (' + worst.q + ').' : '') + '</span>'; }
+  if (C.pctBassa != null) h += '<div class="grid2"><div class="stack"><span class="big-num">' + C.pctAlta + '<span class="small muted">%</span></span><span class="tiny muted">delle calorie da cibi di qualità alta (4-5)' + (CP.pctAlta != null && CP.tot ? ' · prima ' + CP.pctAlta + '%' : '') + '</span></div><div class="stack"><span class="big-num">' + C.pctBassa + '<span class="small muted">%</span></span><span class="tiny muted">da cibi di qualità bassa (1-2)' + (CP.pctBassa != null && CP.tot ? ' · prima ' + CP.pctBassa + '%' : '') + '</span></div></div>';
+  const lst = (L, col) => L.map(x => '<div class="trow"><span class="grow"><span class="small" style="font-weight:600">' + esc(x.nome) + '</span><span class="tiny muted">' + x.n + (x.n === 1 ? ' volta' : ' volte') + ' · ' + fmtK(x.kcal) + ' kcal</span></span><span class="mono small" style="font-weight:700;color:' + col + '">' + fmtN(x.q, x.q % 1 ? 1 : 0) + '/5</span></div>').join('');
+  if (C.su.length) h += '<span class="flabel">La alzano</span><div>' + lst(C.su, 'var(--ok)') + '</div>';
+  if (C.giu.length) h += '<span class="flabel">La abbassano di più</span><div>' + lst(C.giu, 'var(--hot)') + '</div>';
+  return h + '<span class="tiny muted" style="line-height:1.4">Il voto di ogni cibo (da 1 a 5) lo dà l\'AI quando registri il pasto: quanto è lavorato, fibre, zuccheri aggiunti, grassi, densità di nutrienti. Il punteggio del giorno pesa i cibi per le loro calorie.</span></div>';
 }
 function tabAndamento(){
   const oggi = isoDate(new Date()); const n = UI.nper === 30 ? 30 : 7; const fine = UI.nfine && UI.nfine <= oggi ? UI.nfine : oggi; const R = nPeriodo(n, fine); const P = nPeriodo(n, addDays(R.inizio, -1));
@@ -3468,9 +3653,10 @@ function tabAndamento(){
       + (R.hasT ? '<span class="tiny muted">' + R.over + (R.over === 1 ? ' giorno' : ' giorni') + ' sopra, ' + R.under + ' sotto l\'obiettivo.</span>' : '<button type="button" class="link small" data-a="sheet" data-k="' + (energia() ? 'target' : 'dati') + '">Imposta gli obiettivi per vedere quanti giorni li rispetti</button>') + '</div>'; }
   if (n === 30 && R.nC >= 7) { const W = [1, 2, 3, 4, 5, 6, 0].map(g => { const L = R.C.filter(d => parseDate(d.ds).getDay() === g); return { g, n: L.length, v: L.length ? L.reduce((a, d) => a + d.t.kcal, 0) / L.length : 0 }; }); const mx = Math.max(1, ...W.map(x => x.v), R.tk || 0);
     h += '<div class="card"><h2>Giorni della settimana</h2><span class="tiny muted">Calorie medie per giorno: mostra dove si concentrano gli sgarri o i giorni scarichi.</span><div class="nbars" style="grid-template-columns:repeat(7,minmax(0,1fr));height:110px">' + W.map(x => '<span class="nbar ' + (!x.n ? 'vuoto' : R.tk && x.v > R.tk * 1.1 ? 'over' : R.tk && x.v < R.tk * 0.9 ? 'under' : 'ok') + '"><span class="col">' + (R.tk ? '<b style="bottom:' + (R.tk / mx * 100).toFixed(1) + '%"></b>' : '') + '<i style="height:' + (x.n ? Math.max(3, x.v / mx * 100).toFixed(1) : 0) + '%"></i></span><span class="lab">' + GG[x.g] + '<br>' + (x.n ? fmtK(x.v) : '—') + '</span></span>').join('') + '</div></div>'; }
-  if (R.nC) { const ref = microRef(); const acc = {}; MICRO.forEach(m => { acc[m[0]] = R.C.reduce((a, d) => a + (+d.t[m[0]] || 0), 0) / R.nC; });
-    const bassi = MICRO.filter(m => !m[4] && ref[m[0]] && acc[m[0]] / ref[m[0]] < 0.6).map(m => ({ lab: m[1], pct: Math.round(acc[m[0]] / ref[m[0]] * 100) })).sort((a, b) => a.pct - b.pct).slice(0, 6); const alti = MICRO.filter(m => m[4] && ref[m[0]] && acc[m[0]] / ref[m[0]] > 1.1).map(m => ({ lab: m[1], pct: Math.round(acc[m[0]] / ref[m[0]] * 100) }));
-    h += '<div class="card"><h2>Vitamine, minerali e fibre nel periodo</h2>' + (bassi.length ? '<span class="small" style="font-weight:600">Sotto il 60% in media</span><div class="pills">' + bassi.map(x => '<span class="chip warn">' + esc(x.lab) + ' ' + x.pct + '%</span>').join('') + '</div>' : '<span class="small" style="font-weight:600">Nessun nutriente sotto il 60% in media.</span>') + (alti.length ? '<span class="small" style="font-weight:600">Sopra il limite in media</span><div class="pills">' + alti.map(x => '<span class="chip acc">' + esc(x.lab) + ' ' + x.pct + '%</span>').join('') + '</div>' : '') + '<span class="tiny muted" style="line-height:1.4">Medie sui giorni completi, cibo e integratori insieme. Un giorno basso conta poco: è la media di settimane a fare la differenza.</span></div>';
+  h += nQualita(R, P);
+  if (R.nC) { const ref = microRef(); const MA = nMicroAvg(R); const acc = MA.acc;
+    const bassi = MICRO.filter(m => !m[4] && ref[m[0]] && acc[m[0]] != null && acc[m[0]] / ref[m[0]] < 0.6).map(m => ({ lab: m[1], pct: Math.round(acc[m[0]] / ref[m[0]] * 100) })).sort((a, b) => a.pct - b.pct).slice(0, 6); const alti = MICRO.filter(m => m[4] && ref[m[0]] && acc[m[0]] != null && acc[m[0]] / ref[m[0]] > 1.1).map(m => ({ lab: m[1], pct: Math.round(acc[m[0]] / ref[m[0]] * 100) }));
+    h += '<div class="card"><h2>Vitamine, minerali e fibre nel periodo</h2>' + (bassi.length ? '<span class="small" style="font-weight:600">Sotto il 60% in media</span><div class="pills">' + bassi.map(x => '<span class="chip warn">' + esc(x.lab) + ' ' + x.pct + '%</span>').join('') + '</div>' : '<span class="small" style="font-weight:600">Nessun nutriente sotto il 60% in media.</span>') + (alti.length ? '<span class="small" style="font-weight:600">Sopra il limite in media</span><div class="pills">' + alti.map(x => '<span class="chip acc">' + esc(x.lab) + ' ' + x.pct + '%</span>').join('') + '</div>' : '') + '<span class="tiny muted" style="line-height:1.4">' + (MA.n2 < R.nC ? 'Omega 3, zinco, iodio, selenio, vitamine A, E, K, B6 e folati: ' + (MA.n2 ? 'media su ' + MA.n2 + (MA.n2 === 1 ? ' giorno' : ' giorni') + ' (i pasti più vecchi non li hanno). ' : 'non ancora stimati nei pasti di questo periodo. ') : '') + 'Medie sui giorni completi, cibo e integratori insieme. Un giorno basso conta poco: è la media di settimane a fare la differenza.</span></div>';
     const TK = nTopCibi(R, 'kcal'), TP = nTopCibi(R, 'proteine');
     if (TK.list.length) h += '<div class="card"><h2>Da dove arrivano</h2><span class="flabel">Le calorie</span><div class="list">' + TK.list.map(x => '<div class="li" style="padding:6px 0"><span class="grow"><span class="small" style="font-weight:600">' + esc(x.nome) + '</span><span class="tiny muted">' + x.n + (x.n === 1 ? ' volta' : ' volte') + '</span></span><span class="mono small">' + fmtK(x.v) + ' kcal · ' + Math.round(x.v / TK.tot * 100) + '%</span></div>').join('') + '</div><span class="flabel">Le proteine</span><div class="list">' + TP.list.map(x => '<div class="li" style="padding:6px 0"><span class="grow"><span class="small" style="font-weight:600">' + esc(x.nome) + '</span></span><span class="mono small">' + Math.round(x.v) + ' g · ' + Math.round(x.v / Math.max(1, TP.tot) * 100) + '%</span></div>').join('') + '</div></div>'; }
   const key = n + '|' + fine;
@@ -3492,7 +3678,7 @@ function svTot(sv){ return sumItems(sv.items || []); }
 function pastoLab(p){ return { colazione: 'Colazione', pranzo: 'Pranzo', cena: 'Cena', spuntino: 'Spuntino' }[p] || 'Pasto'; }
 function svToks(items){ const s = new Set(); (items || []).forEach(i => dTok(i.nome).forEach(w => s.add(w))); return s; }
 function svSim(a, b){ if (!a.size || !b.size) return 0; let n = 0; a.forEach(w => { if (b.has(w)) n++; }); return n / (a.size + b.size - n); }
-function svClean(i){ const o = { nome: String(i.nome || '').slice(0, 80), quantita: String(i.quantita || '').slice(0, 40) }; svKeys().forEach(k => { o[k] = Math.round((+i[k] || 0) * 10) / 10; }); ['q', 'pro', 'contro'].forEach(k => { if (i[k] != null && i[k] !== '') o[k] = i[k]; }); if (i.fonte === 'bevanda') { o.fonte = 'bevanda'; o.tipo = i.tipo; o.pastoOrig = i.pasto; if (i.ml) o.ml = i.ml; } return o; }
+function svClean(i){ const o = { nome: String(i.nome || '').slice(0, 80), quantita: String(i.quantita || '').slice(0, 40) }; svKeys().forEach(k => { o[k] = Math.round((+i[k] || 0) * 10) / 10; }); ['q', 'pro', 'contro', 'mv'].forEach(k => { if (i[k] != null && i[k] !== '') o[k] = i[k]; }); if (i.fonte === 'bevanda') { o.fonte = 'bevanda'; o.tipo = i.tipo; o.pastoOrig = i.pasto; if (i.ml) o.ml = i.ml; } return o; }
 function svUsable(list){ return (list || []).filter(i => i.fonte !== 'integratore' && i.tipo !== 'acqua'); }
 function svDefName(items){ const L = items.slice().sort((a, b) => (+b.kcal || 0) - (+a.kcal || 0)).filter(i => (+i.kcal || 0) >= 15).map(i => i.nome.replace(/\s*\(.*\)$/, '')); const n = (L.length ? L : items.map(i => i.nome)).slice(0, 3).join(', '); return n.length > 44 ? n.slice(0, 42) + '…' : n; }
 function scaleQ(q, f){ const s = String(q || ''); return /\d/.test(s) ? s.replace(/(\d+(?:[.,]\d+)?)/g, m => fmtN(num(m) * f, (num(m) * f) % 1 ? 1 : 0)) : s + (f !== 1 ? ' ×' + fmtN(f, 1) : ''); }
@@ -5786,7 +5972,7 @@ const AI = {
     const photos = FILES.pasto || []; const text = String(d.text || '').trim(); const qty = String(d.qty || '').trim();
     if (!photos.length && !text) { d.err = 'Scatta una foto o scrivi cosa hai mangiato: puoi fare anche tutte e due le cose.'; render(); return; }
     d.busy = photos.length ? 'Guardo la foto e calcolo i valori…' : 'Calcolo calorie, macro e micronutrienti…'; render(); aiCtl = new AbortController();
-    const fmt = QUAL_RULES + ' Unità: grammi per macro, fibre, zuccheri e saturi; mg per sodio, potassio, calcio, ferro, magnesio e vitamina C; µg per vitamina D e B12. Rispondi solo con JSON: {"alimenti":[{"nome":string,"quantita":string,' + NUTR_FIELDS + '}],"nota":string}';
+    const fmt = QUAL_RULES + ' Unità: grammi per macro, fibre, zuccheri e saturi; mg per sodio, potassio, calcio, ferro, magnesio, zinco, vitamina C, vitamina E, vitamina B6 e omega3 (solo EPA + DHA, quindi pesce e alghe: 0 per gli altri cibi); µg per iodio, selenio, vitamina A (retinolo equivalenti), vitamina D, vitamina K, folati e B12. Rispondi solo con JSON: {"alimenti":[{"nome":string,"quantita":string,' + NUTR_FIELDS + '}],"nota":string}';
     const mk = img => 'Sei un assistente nutrizionale. '
       + (img ? 'Nelle foto può esserci un piatto o un pasto, oppure la confezione di un prodotto e/o la sua tabella dei valori nutrizionali, anche entrambe le cose. Per i piatti riconosci ogni alimento e stima la porzione in grammi guardando le dimensioni rispetto al piatto e alle posate (un piatto piano misura circa 26 cm), considerando i condimenti visibili. Per le etichette leggi nome e valori (per 100 g o per porzione) e calcola i valori per la quantità mangiata' + (qty ? ': "' + qty + '"' : ' (se non è indicata usa la porzione suggerita in etichetta e scrivilo nella nota)') + '. La descrizione dell\'utente ha la precedenza sulla foto e aggiunge quello che nella foto non si vede.'
         : 'Stima i valori nutrizionali del pasto descritto in italiano, diviso per alimenti. Se le quantità non sono indicate usa porzioni medie italiane e considera i condimenti che il piatto prevede di solito.' + (qty ? ' Quantità mangiata del prodotto: ' + qty + '.' : ''))
@@ -6130,6 +6316,28 @@ const A = {
   otgo(ds){ UI.otab = ds.v; return go('obiettivi'); },
   ntab(ds){ UI.ntab = ds.v; render(); try { window.scrollTo(0, 0); } catch(e){} },
   nper(ds){ UI.nper = +ds.v === 30 ? 30 : 7; UI.nfine = null; render(); },
+  wtab(ds){ UI.wtab = ds.v; render(); try { window.scrollTo(0, 0); } catch(e){} },
+  wper(ds){ UI.wper = +ds.v === 12 ? 12 : 4; UI.wfine = null; render(); },
+  wfine(ds){ const n = (UI.wper === 12 ? 12 : 4) * 7; const oggi = isoDate(new Date()); const f = addDays(UI.wfine || oggi, +ds.v * n); UI.wfine = f >= oggi ? null : f; render(); },
+  wall(){ UI.wall = !UI.wall; render(); },
+  wforza(ds){ UI.ptab = 'forza'; UI.forzaEx = ds.v; return go('progressi'); },
+  rtab(ds){ UI.rtab = ds.v; render(); try { window.scrollTo(0, 0); } catch(e){} },
+  rper(ds){ UI.rper = +ds.v === 12 ? 12 : 4; UI.rfine = null; render(); },
+  rfine(ds){ const n = (UI.rper === 12 ? 12 : 4) * 7; const oggi = isoDate(new Date()); const f = addDays(UI.rfine || oggi, +ds.v * n); UI.rfine = f >= oggi ? null : f; render(); },
+  async aiallen(){
+    if (!aiReady()) return; const oggi = isoDate(new Date()); const nw = UI.wper === 12 ? 12 : 4; const fine = UI.wfine && UI.wfine <= oggi ? UI.wfine : oggi; const R = aPeriodo(nw, fine); const P = aPeriodo(nw, addDays(R.inizio, -1)); if (R.n < 3) return; const r1 = v => Math.round(v * 10) / 10; const Rr = rPeriodo(nw, fine);
+    const data = { periodo: R.inizio + ' / ' + fine, settimane: nw, obiettivo: (S.dati || {}).obiettivo || S.profilo.obiettivo || '', allenamenti_a_settimana_previsti: clamp(S.scheda.giorni.length || 3, 2, 6), scheda: S.scheda.nome, sedute_con_scheda: R.n, altre_attivita: R.extra, periodo_precedente: P.n ? { sedute: P.n, altre_attivita: P.extra, volume_kg: Math.round(P.vol), record: P.rec } : null,
+      per_settimana: R.W.map(w => ({ dal: w.da, allenamenti: w.n + w.extra, volume_kg: Math.round(w.vol), serie: w.sets })),
+      esercizi: R.EX.map(o => ({ nome: o.nome, sedute: o.pts.length, unita: o.u === 'kg' ? 'massimale stimato kg' : o.u === 's' ? 'secondi' : 'ripetizioni', inizio_periodo: r1(o.da), fine_periodo: r1(o.a), variazione_percento: r1(o.pct), ultima_serie_migliore: o.u === 'kg' ? o.pts[o.pts.length - 1].kg + ' kg x ' + o.pts[o.pts.length - 1].rip : null })),
+      serie_a_settimana_per_gruppo: Object.fromEntries(MUS_G.map(g => [g, r1(R.mus[g] / nw)])), record_nel_periodo: R.rec, peso_corporeo: R.peso ? { da: R.peso.da, a: R.peso.a } : (bwNow() || null), sonno_ore_medie: R.sonno != null ? r1(R.sonno) : null,
+      recupero_a_settimana: Object.fromEntries(REC_T.map(t => [t[1], r1(Rr.T[t[0]].n / nw)])) };
+    UI.wtipsBusy = true; UI.wtips = ''; UI.wtipsKey = nw + '|' + fine; render(); aiCtl = new AbortController();
+    try {
+      const res = await Store.sample('Sei un preparatore atletico esperto di allenamento con i pesi. Hai i dati di ' + nw + ' settimane di allenamento di una persona: guarda l\'andamento nel tempo, non la singola seduta. Scrivi in italiano da 3 a 5 osservazioni pratiche: costanza rispetto alla scheda, quali esercizi salgono e quali sono fermi o in calo e la causa più probabile (frequenza, volume, sonno, peso che scende), equilibrio tra i gruppi muscolari, e una sola priorità per le prossime settimane. Frasi brevi, una osservazione per riga che inizia con "• ". Usa i numeri che vedi e non inventarne altri. Con pochi dati dillo, senza trarre conclusioni forzate. Niente diagnosi; non riscrivere la scheda. Dati:\n' + JSON.stringify(data), { signal: aiCtl.signal, cache: false, onText: u => { UI.wtips = u.text; const el = $('#wtipsbox'); if (el) el.textContent = u.text; } });
+      UI.wtips = res.text;
+    } catch(e) { UI.wtips = (e && e.text) || ''; toast(aiErr(e)); }
+    UI.wtipsBusy = false; render();
+  },
   nfine(ds){ const n = UI.nper === 30 ? 30 : 7; const oggi = isoDate(new Date()); const f = addDays(UI.nfine || oggi, +ds.v * n); UI.nfine = f >= oggi ? null : f; render(); },
   ngiorno(ds){ if (!ds.v || ds.v > isoDate(new Date())) return; UI.nday = ds.v; UI.ntab = 'diario'; render(); try { window.scrollTo(0, 0); } catch(e){} },
   async aiperiodo(){
@@ -6140,7 +6348,7 @@ const A = {
       bilancio_kcal_totale_vs_obiettivo: R.hasT ? Math.round(R.bil) : null, giorni_calorie_in_obiettivo: R.hasT ? R.okK : null, giorni_proteine_raggiunte: R.hasT ? R.okP : null, qualita_media_su_100: R.q,
       periodo_precedente: P.nC >= 2 ? { kcal: Math.round(P.kcal), proteine: Math.round(P.p), giorni_completi: P.nC } : null,
       giorni: R.days.map(d => ({ data: d.ds, giorno: GG[parseDate(d.ds).getDay()], stato: !d.has ? 'non registrato' : d.completo ? 'completo' : 'incompleto', kcal: Math.round(d.t.kcal), obiettivo_kcal: d.T ? d.T.kcal : null, proteine: Math.round(d.t.proteine), allenamento: sessions().filter(x => isoDate(x.inizio) === d.ds).map(x => x.giorno).concat(S.attivita.filter(a => a.data === d.ds).map(a => attLabel(a.sotto))).join(', ') || null })),
-      micronutrienti_media_percento_del_riferimento: Object.fromEntries(MICRO.filter(m => ref[m[0]]).map(m => [m[1] + (m[4] ? ' (limite)' : ''), Math.round(R.C.reduce((a, d) => a + (+d.t[m[0]] || 0), 0) / R.nC / ref[m[0]] * 100)])),
+      micronutrienti_media_percento_del_riferimento: (function(){ const A = nMicroAvg(R).acc; return Object.fromEntries(MICRO.filter(m => ref[m[0]] && A[m[0]] != null).map(m => [m[1] + (m[4] ? ' (limite)' : ''), Math.round(A[m[0]] / ref[m[0]] * 100)])); })(), qualita_periodo_precedente_su_100: P.q, calorie_da_cibi_di_bassa_qualita_percento: nQCibi(R).pctBassa,
       alimenti_principali_per_calorie: nTopCibi(R, 'kcal').list.map(x => x.nome + ' (' + x.n + ' volte)'), piano_nutrizionista: S.nutri.piano ? S.nutri.piano.riassunto : null };
     UI.ptipsBusy = true; UI.ptips = ''; UI.ptipsKey = n + '|' + fine; render(); aiCtl = new AbortController();
     try {
