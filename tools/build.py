@@ -49,7 +49,8 @@ build = hashlib.sha1(app.encode('utf-8')).hexdigest()[:10]
 head_extra = (
     '<meta charset="utf-8">\n'
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
-    '<meta name="theme-color" content="#141514">\n'
+    '<meta name="theme-color" content="#F2F2EF" media="(prefers-color-scheme: light)">\n'
+    '<meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">\n'
     '<meta name="description" content="Delta Coach: allenamento, alimentazione, abitudini e progressi con il tuo personal trainer.">\n'
     '<meta name="apple-mobile-web-app-capable" content="yes">\n'
     '<meta name="mobile-web-app-capable" content="yes">\n'
@@ -72,4 +73,5 @@ html = ('<!doctype html>\n<html lang="it">\n<head>\n' + head_extra + title + '\n
 os.makedirs(WEB, exist_ok=True)
 open(os.path.join(WEB, 'index.html'), 'w', encoding='utf-8').write(html)
 open(os.path.join(WEB, 'app.js'), 'w', encoding='utf-8').write(app)
+open(os.path.join(WEB, 'version.txt'), 'w', encoding='utf-8').write(build + ' ' + (re.search(r'versione di prova (\d+)', src) or [0, '?'])[1] + '\n')
 print('ok · build', build, '· index', len(html), 'B · app.js', len(app), 'B')

@@ -1,4 +1,4 @@
-"""Icone dell'app (Δ arancione su fondo scuro) per la schermata Home del telefono."""
+"""Icone dell'app (triangolo Δ oro su fondo nero) per la schermata Home del telefono."""
 import os
 from PIL import Image, ImageDraw, ImageFont
 
@@ -6,12 +6,13 @@ WEB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
 FONT = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 
 def icon(size, pad=0.0):
-    im = Image.new('RGB', (size, size), '#141514'); d = ImageDraw.Draw(im)
-    s = size * (1 - 2 * pad); ox = oy = size * pad
-    f = ImageFont.truetype(FONT, int(s * 0.62))
-    box = d.textbbox((0, 0), 'Δ', font=f); w, h = box[2] - box[0], box[3] - box[1]
-    d.text((ox + (s - w) / 2 - box[0], oy + (s - h) / 2 - box[1] - s * 0.02), 'Δ', font=f, fill='#E86A3A')
-    return im
+    k = 4; S = size * k; im = Image.new('RGB', (S, S), '#0A0A0A'); d = ImageDraw.Draw(im)
+    s = S * (1 - 2 * pad); o = S * pad; cx = o + s / 2; w = s * 0.50; h = w * 0.90; top = o + s * 0.27
+    pts = [(cx, top), (cx + w / 2, top + h), (cx - w / 2, top + h)]
+    d.line(pts + [pts[0], pts[1]], fill='#D4AF37', width=int(s * 0.075), joint='curve')
+    r = s * 0.0375
+    for x, y in pts: d.ellipse((x - r, y - r, x + r, y + r), fill='#D4AF37')
+    return im.resize((size, size), Image.LANCZOS)
 
 icon(192).save(os.path.join(WEB, 'icon-192.png'))
 icon(512).save(os.path.join(WEB, 'icon-512.png'))

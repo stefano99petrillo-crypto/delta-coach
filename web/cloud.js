@@ -166,7 +166,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function view() {
     var m = UI.mode, h = '<div class="screen notab" style="justify-content:center;max-width:420px;margin:0 auto;width:100%">'
-      + '<div class="stack" style="gap:6px;margin-bottom:8px"><span class="eyebrow">Delta Coach</span><h1>' + (m === 'signup' ? 'Crea il tuo account' : m === 'reset' ? 'Recupera la password' : m === 'newpw' ? 'Nuova password' : 'Accedi') + '</h1>'
+      + '<div class="row start brand" style="gap:10px;margin-bottom:14px"><span class="brandmark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3.2 21.6 20.4H2.4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg></span><span class="brandname">Delta Coach</span></div><div class="stack" style="gap:6px;margin-bottom:8px"><h1>' + (m === 'signup' ? 'Crea il tuo account' : m === 'reset' ? 'Recupera la password' : m === 'newpw' ? 'Nuova password' : 'Accedi') + '</h1>'
       + '<p class="muted" style="margin:0;line-height:1.5">' + (m === 'signup' ? 'Allenamento, alimentazione e progressi, salvati nel tuo account.' : m === 'reset' ? 'Ti mando una mail con il link per sceglierne una nuova.' : m === 'newpw' ? 'Scegli la nuova password per il tuo account.' : 'Entra con la tua email e la tua password.') + '</p></div>'
       + '<form id="dcauth" class="card" style="gap:12px" novalidate>';
     if (m !== 'newpw') h += '<div class="field"><label for="dc-e">Email</label><input id="dc-e" name="email" type="email" class="input" autocomplete="email" required value="' + esc(UI.email || '') + '"></div>';
