@@ -2189,12 +2189,6 @@ const FX_MODELS = {
     const O = [0, -0.12, 0]; const mid = (a, b) => [(M.v[a][0] + M.v[b][0]) / 2, (M.v[a][1] + M.v[b][1]) / 2, 0];
     for (let i = 0; i < 3; i++) { const j = (i + 1) % 3; M.f.push({ v: [i, j, 6 + j, 6 + i], g: 'gold', c: mid(i, 6 + j) }, { v: [3 + j, 3 + i, 9 + i, 9 + j], g: 'gold', c: mid(3 + i, 9 + j) }, { v: [j, i, 3 + i, 3 + j], g: 'gold', c: O }, { v: [6 + i, 6 + j, 9 + j, 9 + i], g: 'gold', c: O, inv: true }); }
     return fxFinish(M); },
-  /* il diamante del livello: più sfaccettature a ogni fascia */
-  gem(n){ n = Math.max(4, n || 8); const M = { v: [], f: [] }; const ring = (rad, y, off) => { const b = M.v.length; for (let i = 0; i < n; i++) { const t = (i + off) / n * Math.PI * 2; M.v.push([Math.cos(t) * rad, y, Math.sin(t) * rad]); } return b; };
-    const T = ring(0.62, 0.62, 0), G = ring(1.12, 0.18, 0.5), K = ring(1.12, 0.05, 0.5); const C = M.v.length; M.v.push([0, -1.25, 0]);
-    const O = [0, -0.1, 0]; const top = []; for (let i = n - 1; i >= 0; i--) top.push(T + i); M.f.push({ v: top, g: 'gold', c: O });
-    for (let i = 0; i < n; i++) { const j = (i + 1) % n; M.f.push({ v: [T + j, T + i, G + i], g: 'gold', c: O }, { v: [T + j, G + i, G + j], g: 'gold', c: O }, { v: [G + j, G + i, K + i, K + j], g: 'gold', c: O }, { v: [K + j, K + i, C], g: 'gold', c: O }); }
-    return fxFinish(M); },
   /* manichino a basso numero di facce: ogni zona appartiene a un gruppo muscolare */
   body(){ const M = { v: [], f: [] }; const FB = (front, back, side) => n => n[2] > 0.3 ? front : n[2] < -0.3 ? back : side;
     fxPrism(M, [0, 1.8, 0], [0, 1.58, 0], [0.16, 0.18], [0.215, 0.235], 8, 'x'); fxPrism(M, [0, 1.58, 0], [0, 1.36, 0.01], [0.215, 0.235], [0.15, 0.17], 8, 'x'); fxPrism(M, [0, 1.38, 0], [0, 1.2, 0], [0.11, 0.115], [0.2, 0.13], 6, FB('x', 'Schiena', 'Schiena'), false);
@@ -2245,7 +2239,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function fxItem(key, kind, arg){
   let it = FX.items[key]; if (it && it.sig === kind + '|' + arg) return it;
   const cv = it ? it.cv : document.createElement('canvas'); cv.className = 'fxcv'; cv.setAttribute('aria-hidden', 'true');
-  const base = { delta: { fitW: 3.1, fitH: 2.9, cy: 0.5, pitch: 0.18, spin: 0.7, glow: true }, gem: { fitW: 2.9, fitH: 2.5, cy: 0.42, pitch: 0.42, spin: 0.55, glow: true }, body: { fitW: 2.12, fitH: 3.78, cy: 0.5, pitch: 0.05, spin: 0.45, glow: false, amb: 0.3 } }[kind];
+  const base = { delta: { fitW: 3.1, fitH: 2.9, cy: 0.5, pitch: 0.18, spin: 0.7, glow: true }, body: { fitW: 2.12, fitH: 3.78, cy: 0.5, pitch: 0.05, spin: 0.45, glow: false, amb: 0.3 } }[kind];
   const n = Object.assign({ cv, ctx: cv.getContext('2d'), kind, sig: kind + '|' + arg, model: FX_MODELS[kind](+arg || 0), yaw: it ? it.yaw : (kind === 'body' ? 0.5 : 0.6), vy: 0, drag: null, dirty: true, dpr: 1, load: null }, base);
   if (!it) {
     cv.addEventListener('pointerdown', e => { const I = FX.items[key]; I.drag = { x: e.clientX, t: performance.now(), yaw: I.yaw }; I.vy = 0; try { cv.setPointerCapture(e.pointerId); } catch(e2){} fxKick(); });
@@ -2272,8 +2266,6 @@ function fxConfetti(n){
 }
 
 /* ---------- dove vanno i solidi 3D e le altre grafiche vive ---------- */
-function gemFacce(L){ return L < 5 ? 4 : L < 10 ? 6 : L < 20 ? 8 : L < 35 ? 10 : L < 50 ? 12 : 16; }
-function gemNext(L){ return [5, 10, 20, 35, 50].find(x => x > L) || null; }
 const MUS_G = ['Petto', 'Schiena', 'Spalle', 'Braccia', 'Core', 'Gambe'];
 function muscoliSett(list){
   const from = Date.now() - 7 * DAY; const sets = {}; MUS_G.forEach(g => { sets[g] = 0; }); let n = 0;
@@ -3108,7 +3100,6 @@ SCREENS.livelli = function(){
   }
   let h = '<div class="screen game" style="gap:14px">';
   h += '<div class="row"><span class="g-label">' + esc(roleLab) + '</span><span class="row" style="gap:8px"><span class="tiny muted">Modalità livelli</span><button type="button" class="switch" role="switch" aria-checked="true" data-a="togglegame" aria-label="Disattiva modalità livelli"></button><button type="button" class="avatar" style="background:transparent;border-color:var(--g-line);color:var(--g-fg)" data-a="go" data-r="profilo" aria-label="Profilo">' + initials(S.profilo.nome) + '</button></span></div>';
-  { const nf = gemFacce(T.lv.L), nx = gemNext(T.lv.L); h += '<div class="g-panel" style="align-items:center;gap:4px;padding-top:10px"><span class="c1"></span><span class="c2"></span><div class="fx3d" data-fx="gem" data-key="gem" data-n="' + nf + '" style="height:150px;width:100%" role="img" aria-label="Il diamante del tuo livello"></div><span class="tiny muted" style="text-align:center">Diamante a ' + nf + ' facce' + (nx ? ' · nuovo taglio al livello ' + nx : ' · taglio massimo') + '</span></div>'; }
   h += '<div class="g-panel"><span class="c1"></span><span class="c2"></span><div class="row" style="align-items:flex-end"><div class="row start" style="gap:10px;align-items:baseline"><span class="mono" style="color:var(--g-lime);font-weight:600">LV</span><span class="mono" style="font-size:56px;line-height:1;font-weight:600;color:#fff">' + T.lv.L + '</span></div>'
     + '<div class="stack" style="align-items:flex-end;text-align:right"><span style="font-size:18px;font-weight:800">' + esc(T.adv ? T.adv : T.base) + '</span><span class="tiny muted">' + esc(T.gr) + (T.adv ? ' (' + esc(T.base) + ')' : '') + '</span><button type="button" class="link tiny" data-a="go" data-r="classi">Come funzionano le classi</button></div></div>'
     + '<div class="g-track"><span style="width:' + (T.lv.cur / T.lv.need * 100).toFixed(0) + '%;background:var(--g-lime)"></span></div><div class="row mono tiny muted"><span>' + T.lv.cur + ' / ' + T.lv.need + ' XP</span><span>LV ' + (T.lv.L + 1) + '</span></div>';
