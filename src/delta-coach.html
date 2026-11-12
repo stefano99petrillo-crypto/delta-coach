@@ -863,6 +863,8 @@ function xpTotal(){
 function levelInfo(xp){ let L = 1, need = 120, cur = xp; while (cur >= need) { cur -= need; L++; need = 100 + 20 * L; } return { L, cur, need }; }
 const ATT_CAT = { boxe:'combat', kick:'combat', circuito:'circuito', funzionale:'circuito', spinning:'ritmo', danza:'ritmo', yoga:'mente', pilates:'mente', corsa:'cardio', bici:'cardio', nuoto:'cardio', vogatore:'cardio', camminata:'benessere', corpolibero:'corpo' };
 const CAT_LABEL = { forza:'forza in sala', iper:'sala pesi', cardio:'cardio', combat:'combattimento', circuito:'circuito', ritmo:'corsi a ritmo', mente:'yoga e pilates', corpo:'corpo libero', benessere:'benessere' };
+/* un giorno (data senza ora) conta in una finestra se il suo mezzogiorno ci cade dentro: così non si conta due volte a cavallo tra due settimane */
+function dayIn(d, since, until){ const t = Math.min(parseDate(d).getTime() + DAY / 2, Date.now()); return t > since && t <= until; }
 function mix(days, off){
   const until = Date.now() - (off || 0) * DAY; const since = until - days * DAY;
   const m = { forza:0, iper:0, cardio:0, combat:0, circuito:0, ritmo:0, mente:0, corpo:0, benessere:0 };
@@ -881,11 +883,11 @@ function mix(days, off){
     m[avg <= 6 ? 'forza' : 'iper'] += min * cnt.pesi / tot;
     m.corpo += min * cnt.corpo / tot; m.cardio += min * cnt.cardio / tot;
   });
-  S.attivita.filter(a => { const t = parseDate(a.data).getTime(); return t >= since - DAY && t <= until; }).forEach(a => {
+  S.attivita.filter(a => dayIn(a.data, since, until)).forEach(a => {
     const min = +a.min || 0; const c = ATT_CAT[a.sotto] || 'circuito'; m[c] += min;
     if (sport[a.sotto] != null) sport[a.sotto] += min; sotto[a.sotto] = (sotto[a.sotto] || 0) + min;
   });
-  S.recupero.filter(r => { const t = parseDate(r.data).getTime(); return t >= since - DAY && t <= until; }).forEach(r => { m.benessere += r.tipo === 'mobilita' ? (+r.min || 0) : (+r.min || 0) * 0.5; });
+  S.recupero.filter(r => dayIn(r.data, since, until)).forEach(r => { m.benessere += r.tipo === 'mobilita' ? (+r.min || 0) : (+r.min || 0) * 0.5; });
   const total = Object.values(m).reduce((a, b) => a + b, 0);
   const pct = {}; Object.keys(m).forEach(k => { pct[k] = total ? m[k] / total * 100 : 0; });
   return { m, pct, total, sport, sotto, heavyKey, heavyAll, avgSets: sessN ? setsTot / sessN : 0 };
@@ -2243,7 +2245,7 @@ function fxTick(ts){
   FX.raf = 0; const dt = Math.min(0.05, (ts - (FX.last || ts)) / 1000); FX.last = ts; let live = false;
   Object.keys(FX.items).forEach(k => { const it = FX.items[k]; if (!it.cv.isConnected) return; const idle = !it.drag;
     if (idle) { if (Math.abs(it.vy) > 0.02) { it.yaw += it.vy * dt; it.vy *= Math.pow(0.05, dt); it.dirty = true; } else if (!FX.still) { it.yaw += it.spin * dt; it.dirty = true; } }
-    it.fr = (it.fr || 0) + 1; if (it.dirty && (it.kind !== 'body' || it.drag || it.fr % 2 === 0)) { fxDraw(it); it.dirty = false; } if (!FX.still || it.drag || Math.abs(it.vy) > 0.02) live = true; });
+    it.fr = (it.fr || 0) + 1; if (it.dirty && (it.kind !== 'body' || it.drag || !it.drawn || it.fr % 2 === 0)) { fxDraw(it); it.dirty = false; it.drawn = !!(it.cv.width && it.cv.height); } if (!FX.still || it.drag || Math.abs(it.vy) > 0.02 || it.dirty || !it.drawn) live = true; });
   if (live && document.visibilityState === 'visible') FX.raf = requestAnimationFrame(fxTick); else FX.last = 0;
 }
 function fxKick(){ if (!FX.raf) FX.raf = requestAnimationFrame(fxTick); }
@@ -2268,11 +2270,18 @@ function fxMount(){
   document.querySelectorAll('[data-fx]').forEach(el => { const it = fxItem(el.dataset.key || el.dataset.fx, el.dataset.fx, el.dataset.n || '');
     if (el.dataset.load) { try { it.load = JSON.parse(el.dataset.load); } catch(e) { it.load = null; } }
     if (it.cv.parentNode !== el) el.appendChild(it.cv); const r = el.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1); const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
-    if (w && h && (it.cv.width !== w || it.cv.height !== h)) { it.cv.width = w; it.cv.height = h; } it.dpr = dpr; it.dirty = true; });
+    if (w && h && (it.cv.width !== w || it.cv.height !== h)) { it.cv.width = w; it.cv.height = h; } it.dpr = dpr; it.dirty = true; if (!w || !h) it.drawn = false; });
   /* le figure WebGL uscite dallo schermo liberano la scheda grafica */
   Object.keys(FX.items).forEach(k => { const it = FX.items[k]; if (it.G && !it.cv.isConnected) { const x = it.G.gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); delete FX.items[k]; } });
-  fxKick();
+  fxKick(); clearTimeout(FX.rs); FX.rs = setTimeout(fxResize, 150); setTimeout(fxResize, 600);
 }
+/* la schermata può cambiare misura dopo il primo disegno (animazione di entrata, barra del browser): ricontrollo e ridisegno */
+function fxResize(){
+  let ch = false; Object.keys(FX.items).forEach(k => { const it = FX.items[k]; if (!it.cv.isConnected || !it.cv.parentNode) return; const r = it.cv.parentNode.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1); const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (w && h && (it.cv.width !== w || it.cv.height !== h || !it.drawn)) { it.cv.width = w; it.cv.height = h; it.dpr = dpr; it.dirty = true; it.drawn = false; ch = true; } });
+  if (ch) fxKick();
+}
+window.addEventListener('resize', () => { clearTimeout(FX.rs); FX.rs = setTimeout(fxResize, 120); });
 /* coriandoli a triangolo (piccoli Δ) quando salvi un allenamento; di più se c'è un record */
 function fxConfetti(n){
   if (FX.still) return; n = n || 70; const cv = document.createElement('canvas'); cv.className = 'fxconf'; cv.setAttribute('aria-hidden', 'true'); const dpr = Math.min(2, window.devicePixelRatio || 1); const W = cv.width = Math.round(innerWidth * dpr), H = cv.height = Math.round(innerHeight * dpr); document.body.appendChild(cv); const ctx = cv.getContext('2d');
@@ -3041,9 +3050,24 @@ function cardioSettCard(){
     + '<span class="tiny muted" style="line-height:1.4">Media delle ultime 4 settimane: corsa, bici, nuoto, vogatore, corsi e la parte di cardio delle sedute. 150 minuti a settimana sono la soglia minima consigliata per la salute; sotto, la statistica Resistenza scende fino al 10%.</span>'
     + '<button type="button" class="btn sm" data-a="sheet" data-k="attivita">Registra un\'attività</button></div>';
 }
-function nuotoCard(){
-  const swims = S.attivita.filter(a => a.sotto === 'nuoto').sort((a, b) => a.data < b.data ? 1 : -1); if (!swims.length) return ''; const l = swims[0]; const pace = l.km ? (l.min * 60) / (l.km * 10) : null;
-  return '<div class="card"><div class="row"><h2>Nuoto · ' + esc(fmtD(parseDate(l.data))) + '</h2><span class="chip">' + swims.length + ' in totale</span></div><div class="grid3"><div class="stack"><span class="tiny muted">Distanza</span><span class="big-num" style="font-size:17px">' + (l.km ? fmtN(l.km * 1000, 0) + ' m' : '—') + '</span></div><div class="stack"><span class="tiny muted">Tempo</span><span class="big-num" style="font-size:17px">' + fmtMin(l.min) + '</span></div><div class="stack"><span class="tiny muted">Passo /100 m</span><span class="big-num" style="font-size:17px">' + (pace ? Math.floor(pace / 60) + ':' + pad(Math.round(pace % 60)) : '—') + '</span></div></div></div>';
+/* una scheda per ogni sport di resistenza registrato: ultima uscita, passo e storico recente */
+const CARDIO_SPORT = [['corsa', 'Corsa'], ['bici', 'Bici'], ['nuoto', 'Nuoto'], ['vogatore', 'Vogatore']];
+function cardioPasso(sp, a){
+  const km = +a.km || 0, min = +a.min || 0; if (!(km > 0) || !(min > 0)) return '—';
+  const mmss = sec => Math.floor(sec / 60) + ':' + pad(Math.round(sec % 60));
+  if (sp === 'bici') return fmtN(km / (min / 60), 1) + ' km/h';
+  if (sp === 'nuoto') return mmss(min * 60 / (km * 10)) + ' /100 m';
+  if (sp === 'vogatore') return mmss(min * 60 / (km * 2)) + ' /500 m';
+  return mmss(min * 60 / km) + ' /km';
+}
+function cardioSportCards(){
+  return CARDIO_SPORT.map(o => {
+    const sp = o[0], list = S.attivita.filter(a => a.sotto === sp).sort((a, b) => a.data < b.data ? 1 : -1); if (!list.length) return '';
+    const l = list[0], dist = a => a.km ? (sp === 'nuoto' ? fmtN(a.km * 1000, 0) + ' m' : fmtN(a.km, 1) + ' km') : '—';
+    return '<div class="card"><div class="row"><h2>' + o[1] + ' · ' + esc(fmtD(parseDate(l.data))) + '</h2><span class="chip">' + list.length + (list.length === 1 ? ' uscita' : ' in totale') + '</span></div>'
+      + '<div class="grid3"><div class="stack"><span class="tiny muted">Distanza</span><span class="big-num" style="font-size:17px">' + dist(l) + '</span></div><div class="stack"><span class="tiny muted">Tempo</span><span class="big-num" style="font-size:17px">' + fmtMin(l.min) + '</span></div><div class="stack"><span class="tiny muted">Passo</span><span class="big-num" style="font-size:17px">' + cardioPasso(sp, l) + '</span></div></div>'
+      + (list.length > 1 ? '<div class="list">' + list.slice(1, 5).map(a => '<div class="li"><span class="grow"><span class="title">' + esc(fmtD(parseDate(a.data))) + '</span><span class="small muted mono">' + dist(a) + ' · ' + fmtMin(a.min) + ' · ' + cardioPasso(sp, a) + '</span></span></div>').join('') + '</div>' : '') + '</div>';
+  }).join('');
 }
 /* storico dei check e dei minuti di recupero: sta nell'andamento del recupero */
 function recStoricoCards(){
@@ -3090,7 +3114,7 @@ SCREENS.progressi = function(){
       if (R.recs.length) h += '<div class="card"><h2>Record personali</h2><div class="list">' + R.recs.slice().reverse().slice(0, 8).map(r => '<div class="li"><span class="grow"><span class="title">' + esc(r.nome) + '</span><span class="small muted">' + esc(fmtD(r.data)) + '</span></span><span class="mono">' + fmtN(+r.kg) + ' kg × ' + r.rip + '</span></div>').join('') + '</div></div>';
     }
   } else if (tab === 'cardio') {
-    h += vo2Card() + cardioSettCard() + nuotoCard();
+    h += vo2Card() + cardioSettCard() + cardioSportCards();
   } else {
     h += mobilitaCard();
   }
@@ -3317,7 +3341,7 @@ SCREENS.profilo = function(){
   if (role !== 'manager') h += '<div class="card"><div class="row"><span>Modalità livelli</span><button type="button" class="switch" role="switch" aria-checked="' + !!S.impostazioni.livelli + '" data-a="togglegame" aria-label="Modalità livelli"></button></div></div>';
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 41</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 42</p>';
   return h + '</div>';
 };
 
