@@ -605,6 +605,9 @@ function datiMissing(){
   if (!d.lavoro || d.allenamenti === '' || d.allenamenti == null) m.push('quanto ti muovi'); if (!d.obiettivo) m.push('obiettivo');
   return m;
 }
+/* quanto l'obiettivo sposta le calorie rispetto al consumo (surplus o deficit su TUTTA la giornata) */
+const OB_FO = { dimagrire: 0.85, ricomposizione: 0.95, mantenere: 1, massa: 1.1, performance: 1.05, forza: 1.05, salute: 1, ripresa: 1 };
+function obFo(ob){ return OB_FO[ob] || 1; }
 function energia(){
   const d = S.dati || {}; const peso = latestPeso(); const eta = ageOf(); const alt = num(d.altezza); const sx = d.sesso || sexOf();
   if (!peso || !eta || !alt || !sx) return null;
@@ -615,11 +618,11 @@ function energia(){
   const pal = clamp(({ sedentario: 1.35, in_piedi: 1.5, fisico: 1.65 }[d.lavoro] || 1.4) + 0.05 * Math.min(allen, 7), 1.3, 2.1);
   const tdee = Math.round(bmr * pal / 10) * 10;
   const ob = d.obiettivo || 'mantenere';
-  const fo = { dimagrire: 0.85, ricomposizione: 0.95, mantenere: 1, massa: 1.1, performance: 1.05, salute: 1 }[ob] || 1;
+  const fo = obFo(ob);
   let kcal = Math.round(tdee * fo / 10) * 10; const floor = Math.max(bmr, sx === 'f' ? 1300 : 1500); if (kcal < floor) kcal = Math.round(floor / 10) * 10;
   const bmi = peso / Math.pow(alt / 100, 2);
   const pesoRif = bmi > 30 ? 25 * Math.pow(alt / 100, 2) : peso;
-  const pk = { dimagrire: 2.0, ricomposizione: 2.0, massa: 1.8, performance: 1.8, mantenere: 1.6, salute: 1.4 }[ob] || 1.6;
+  const pk = { dimagrire: 2.0, ricomposizione: 2.0, massa: 1.8, performance: 1.8, forza: 1.8, mantenere: 1.6, ripresa: 1.8, salute: 1.4 }[ob] || 1.6;
   const proteine = Math.round(pesoRif * pk);
   const grassi = Math.round(Math.max(pesoRif * 0.9, kcal * 0.22 / 9));
   const carboidrati = Math.max(60, Math.round((kcal - proteine * 4 - grassi * 9) / 4));
@@ -1241,9 +1244,9 @@ function targetFor(ds){
   if (!dinamicoOn()) return Object.assign({}, T, { base: T.kcal, extra: 0, att: [], din: false });
   const E = energia(); const calc = E && /calcolat|stima/.test(S.nutri.fonte || '');
   const base = calc ? E.kcalRiposo : (E && E.kcal ? Math.round(T.kcal * E.kcalRiposo / E.kcal / 10) * 10 : T.kcal); const ob = (S.dati || {}).obiettivo || 'mantenere';
-  const fattore = { dimagrire: 0.6, ricomposizione: 0.75 }[ob] || 1; const att = attivitaGiorno(ds);
+  const fattore = obFo(ob); const att = attivitaGiorno(ds);
   const extra = Math.round(att.reduce((a, x) => a + x.kcal, 0) * fattore / 10) * 10; const kcal = base + extra;
-  return { kcal, proteine: T.proteine, grassi: T.grassi, carboidrati: Math.max(60, Math.round((kcal - T.proteine * 4 - T.grassi * 9) / 4)), base, extra, att, din: true, fattore, calc };
+  return { kcal, proteine: T.proteine, grassi: T.grassi, carboidrati: Math.max(60, Math.round((kcal - T.proteine * 4 - T.grassi * 9) / 4)), base, extra, att, din: true, fattore, calc, ob };
 }
 
 /* ---------- qualità del cibo ---------- */
@@ -1327,9 +1330,9 @@ function sheetKcalDay(){
   const ds = UI.nday; const t = targetFor(ds); const close = '<button type="button" class="btn pri" data-a="closesheet">Ho capito</button>'; if (!t) return close;
   const E = energia();
   return '<span class="eyebrow">Calorie di ' + (ds === isoDate(new Date()) ? 'oggi' : esc(fmtD(parseDate(ds)))) + '</span><h2 style="font-size:24px">' + fmtK(t.kcal) + ' kcal</h2><div class="list">'
-    + '<div class="li"><span class="grow"><span class="title">Base</span><span class="small muted" style="line-height:1.45">' + (t.calc && E ? 'Metabolismo basale ' + fmtK(E.bmr) + ' kcal × la tua giornata senza allenamento, già corretto per l\'obiettivo.' : 'I tuoi obiettivi impostati.') + '</span></span><span class="mono" style="font-weight:600">' + fmtK(t.base) + '</span></div>'
+    + '<div class="li"><span class="grow"><span class="title">Base</span><span class="small muted" style="line-height:1.45">' + (t.calc && E ? 'Metabolismo basale ' + fmtK(E.bmr) + ' kcal × la tua giornata senza allenamento' + (t.fattore !== 1 ? ', già corretto per il tuo obiettivo (' + esc((lab(OBIETTIVI_DATI, t.ob) || '').toLowerCase()) + ', ' + (t.fattore > 1 ? '+' : '−') + Math.round(Math.abs(t.fattore - 1) * 100) + '%).' : '.') : 'I tuoi obiettivi impostati.') + '</span></span><span class="mono" style="font-weight:600">' + fmtK(t.base) + '</span></div>'
     + (t.att.length ? t.att.map(a => '<div class="li"><span class="grow"><span>' + esc(a.lab) + '</span></span><span class="mono small">+' + fmtK(a.kcal) + '</span></div>').join('') : '<div class="li"><span class="grow"><span class="small muted">Nessun allenamento o attività registrati: è un giorno di riposo, quindi l\'obiettivo è più basso.</span></span></div>')
-    + (t.att.length && t.fattore < 1 ? '<div class="li"><span class="grow"><span class="small muted" style="line-height:1.45">Visto il tuo obiettivo ne recuperi il ' + Math.round(t.fattore * 100) + '%, così il deficit resta.</span></span><span class="mono" style="font-weight:600">+' + fmtK(t.extra) + '</span></div>' : '')
+    + (t.att.length && t.fattore !== 1 ? '<div class="li"><span class="grow"><span class="small muted" style="line-height:1.45">Con il tuo obiettivo ' + (t.fattore < 1 ? 'ne recuperi il ' + Math.round(t.fattore * 100) + '%, così il deficit resta anche oggi.' : 'ne conti il ' + Math.round((t.fattore - 1) * 100) + '% in più, così il surplus resta anche oggi.') + '</span></span><span class="mono" style="font-weight:600">+' + fmtK(t.extra) + '</span></div>' : '')
     + '</div><span class="tiny muted" style="line-height:1.45">Le calorie dell\'attività sono stimate con i MET (intensità × peso × durata). Proteine e grassi restano fissi; cambiano i carboidrati, che sono il carburante dell\'allenamento.</span>' + close;
 }
 
@@ -1946,7 +1949,7 @@ async function guidaGo(){
     d.busy = ''; saveGuida({ titolo: String(r.titolo || 'La tua guida').slice(0, 90), sintesi: String(r.sintesi || '').slice(0, 600), tempi: String(r.tempi || '').slice(0, 200), passi, abitudini: abit, attenzione: String(r.attenzione || '').slice(0, 300), ai: true }, d);
   } catch(e) { if (e && e.code === 'cancelled') { d.busy = ''; render(); return; } d.busy = ''; toast(aiErr(e) + ' Ti preparo una guida base.'); saveGuida(local(), d); }
 }
-function saveGuida(G, d){ S.guida = Object.assign(G, { obiettivi: d.sel || [], testo: d.text || '', creata: Date.now() }); if (!S.profilo.obiettivo && G.titolo) S.profilo.obiettivo = (d.sel || []).map(k => lab(GOALS, k)).join(', ').slice(0, 80); save(); UI.sheet = null; go('guida'); }
+function saveGuida(G, d){ S.guida = Object.assign(G, { obiettivi: d.sel || [], testo: d.text || '', creata: Date.now() }); { const M = { dimagrire: 'dimagrire', massa: 'massa', tonico: 'ricomposizione', forza: 'performance', ibrido: 'performance', gara: 'performance', longevita: 'salute', energia: 'salute', mangiare: 'salute' }; const hit = (d.sel || []).find(k => M[k]); if (!S.dati) S.dati = {}; if (!S.dati.obiettivo && hit) { S.dati.obiettivo = M[hit]; const E = energia(); if (E && /calcolat|stima/.test(S.nutri.fonte || '')) S.nutri.target = calcTarget(E); } } if (!S.profilo.obiettivo && G.titolo) S.profilo.obiettivo = (d.sel || []).map(k => lab(GOALS, k)).join(', ').slice(0, 80); save(); UI.sheet = null; go('guida'); }
 
 /* ---------- mobilità: test + pratica ---------- */
 const MOB_OPT = {
@@ -2697,7 +2700,7 @@ SCREENS.profilo = function(){
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
   if (window.dcLogout) h += '<button type="button" class="btn wide ghost" data-a="dclogout">Esci dall\'account' + (window.dcEmail ? ' · ' + esc(window.dcEmail) : '') + '</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione 37 · web</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione 38 · web</p>';
   return h + '</div>';
 };
 
@@ -3609,6 +3612,12 @@ function nSintesi(R, P){
     if (R.okP < R.nC * 0.6) out.push(['warn', 'Proteine raggiunte solo ' + R.okP + ' giorni su ' + R.nC + ': in media ' + Math.round(R.p) + ' g su ' + Math.round(R.tp) + '.']); else out.push(['ok', 'Proteine raggiunte ' + R.okP + ' giorni su ' + R.nC + '.']); }
   if (R.nC >= 5) { const we = R.C.filter(d => { const g = parseDate(d.ds).getDay(); return g === 0 || g === 6; }), wd = R.C.filter(d => { const g = parseDate(d.ds).getDay(); return g > 0 && g < 6; }); if (we.length && wd.length >= 2) { const a = we.reduce((x, d) => x + d.t.kcal, 0) / we.length, b = wd.reduce((x, d) => x + d.t.kcal, 0) / wd.length; if (Math.abs(a - b) >= 200) out.push(['', 'Nel fine settimana mangi in media ' + fmtK(Math.abs(a - b)) + ' kcal ' + (a > b ? 'in più' : 'in meno') + ' che negli altri giorni.']); } }
   if (R.peso && Math.abs(R.peso.d) >= 0.2) out.push(['', 'Peso: ' + (R.peso.d > 0 ? '+' : '−') + fmtN(Math.abs(R.peso.d), 1) + ' kg ' + per + ' (da ' + fmtN(R.peso.da, 1) + ' a ' + fmtN(R.peso.a, 1) + ' kg).']);
+  if (R.n === 30 && R.peso && R.nC >= 12) { const d = R.peso.d, wk = d / (R.n / 7);
+    if (ob === 'massa' && wk < 0.05) out.push(['warn', 'Obiettivo massa, ma il peso non sale (' + (d > 0 ? '+' : '−') + fmtN(Math.abs(d), 1) + ' kg in un mese). Se mangi già vicino all\'obiettivo, aggiungi 150-200 kcal e riguarda tra due settimane.']);
+    else if (ob === 'massa' && wk > 0.5) out.push(['warn', 'Il peso sale di ' + fmtN(wk, 1) + ' kg a settimana: per la massa pulita ne bastano 0,25-0,5. Il resto tende a essere grasso.']);
+    else if (ob === 'dimagrire' && wk > -0.1) out.push(['warn', 'Obiettivo dimagrire, ma il peso non scende (' + (d > 0 ? '+' : '−') + fmtN(Math.abs(d), 1) + ' kg in un mese). Controlla i giorni fuori obiettivo e il fine settimana prima di tagliare calorie.']);
+    else if (ob === 'dimagrire' && wk < -1) out.push(['warn', 'Perdi ' + fmtN(Math.abs(wk), 1) + ' kg a settimana: è veloce. Sopra l\'1% del peso a settimana si perde muscolo, meglio rallentare.']);
+    else if ((ob === 'massa' && wk >= 0.05) || (ob === 'dimagrire' && wk <= -0.1)) out.push(['ok', 'Il peso va nella direzione del tuo obiettivo (' + (d > 0 ? '+' : '−') + fmtN(Math.abs(d), 1) + ' kg in un mese).']); }
   if (P && P.nC >= 2 && R.nC >= 2) { const d = R.kcal - P.kcal; if (Math.abs(d) >= 80) out.push(['', 'Rispetto ai ' + R.n + ' giorni prima: ' + (d > 0 ? '+' : '−') + fmtK(Math.abs(d)) + ' kcal e ' + (R.p - P.p >= 0 ? '+' : '−') + Math.round(Math.abs(R.p - P.p)) + ' g di proteine al giorno.']); }
   if (R.q != null && P && P.q != null && P.nC >= 2 && Math.abs(R.q - P.q) >= 5) out.push([R.q > P.q ? 'ok' : 'warn', 'Qualità del cibo ' + (R.q > P.q ? 'in salita' : 'in calo') + ': ' + R.q + ' su 100, ' + (R.q > P.q ? '+' : '−') + Math.abs(R.q - P.q) + ' rispetto ai ' + R.n + ' giorni prima.']);
   const vuoti = R.days.filter(d => !d.has && d.ds < isoDate(new Date())).length; if (vuoti >= Math.max(2, R.n / 4)) out.push(['warn', vuoti + ' giorni senza pasti registrati: le medie valgono solo per i giorni segnati.']);
