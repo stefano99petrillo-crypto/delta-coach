@@ -957,7 +957,10 @@ function stats(){
   const FZ = forzaDettaglio(); st.forza = FZ.score; src.forza = FZ.lifts.length ? (FZ.prog ? 'esercizi base e progressi del mese, ' : '') + 'rispetto a ' + (FZ.sx === 'f' ? 'donne' : 'uomini') + (FZ.age ? ' di ' + FZ.age + ' anni' : '') + ': ' + FZ.lifts.map(l => l.lab.toLowerCase()).join(', ') : FZ.grezza ? 'stima grezza: registra squat, panca, stacco o trazioni' : (peso ? 'registra squat, panca, stacco o trazioni' : 'serve il peso');
   const X = mix(28), endu = (X.m.cardio + X.m.circuito + X.m.combat + X.m.ritmo) / 4;
   const minS = X.total ? Math.round(Math.min(100, endu / 150 * 75)) : null; const V2 = vo2Info();
-  if (V2 && !V2.stima) { st.resistenza = Math.round(minS == null ? V2.score : V2.score * 0.6 + minS * 0.4); src.resistenza = 'VO2max ' + fmtN(V2.val, 0) + ' (' + V2.cat + ')' + (minS != null ? ' e minuti di cardio' : ''); }
+  if (V2 && !V2.stima) { /* il VO2max cala piano: il cardio recente lo corregge al massimo del 10%, un test vecchio fino al 10% */
+    const act = Math.min(1, endu / 150); const mesi = V2.data ? daysBetween(parseDate(V2.data), new Date()) / 30 : 0; const vecchio = clamp((mesi - 6) * 0.01, 0, 0.1);
+    st.resistenza = Math.round(clamp(V2.score * (0.9 + 0.1 * act) * (1 - vecchio), 0, 100));
+    src.resistenza = 'VO2max ' + fmtN(V2.val, 0) + ' (' + V2.cat + ')' + (act < 1 ? ', ridotto fino al 10% se nelle ultime 4 settimane fai meno di 150 minuti di cardio a settimana (ora ' + Math.round(endu) + ')' : ', con almeno 150 minuti di cardio a settimana') + (vecchio > 0 ? '; test di ' + Math.round(mesi) + ' mesi fa: rifallo' : ''); }
   else if (V2 && minS != null) { st.resistenza = Math.round(V2.score * 0.3 + minS * 0.7); src.resistenza = 'minuti di cardio e VO2max stimato: fai un test per renderlo preciso'; }
   else { st.resistenza = minS; src.resistenza = minS == null ? 'registra cardio o corsi, o inserisci il VO2max' : 'minuti di cardio e corsi'; }
   const CI = compInfo(); st.composizione = CI.bf != null ? CI.score : null; src.composizione = CI.bf != null ? fmtN(CI.bf) + '% grasso, ' + CI.cat + ' (' + CI.fonte + ')' : 'serve InBody o le circonferenze';
@@ -3324,7 +3327,7 @@ SCREENS.profilo = function(){
   if (role !== 'manager') h += '<div class="card"><div class="row"><span>Modalità livelli</span><button type="button" class="switch" role="switch" aria-checked="' + !!S.impostazioni.livelli + '" data-a="togglegame" aria-label="Modalità livelli"></button></div></div>';
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 38</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 39</p>';
   return h + '</div>';
 };
 
