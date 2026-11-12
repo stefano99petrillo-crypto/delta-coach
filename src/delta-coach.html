@@ -356,12 +356,6 @@ button.trow:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bor
 .aibar{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:1.5px dashed var(--warn);border-radius:14px;background:var(--warn-soft);color:var(--fg);font:inherit;cursor:pointer}
 .aioff .btn{flex:none}
 
-.pcard{display:flex;align-items:stretch;gap:10px;width:100%;padding:12px 14px 12px 6px;border:1.5px solid var(--line);border-radius:20px;background:var(--surface);color:var(--fg);font:inherit;text-align:left;cursor:pointer}
-.pc-av{width:76px;flex:0 0 76px;display:flex;align-items:flex-end}
-.pc-av svg,.pg-stage svg,.av-prev svg{width:100%;height:auto;display:block}
-.pc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;justify-content:center}
-.pc-lv{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.pc-lv .mono{font-weight:700;font-size:14px;color:var(--accent-tx)}
 .pc-cls{font-weight:800;font-size:16px;line-height:1.2}
 .pc-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);align-items:center}
 .pc-fl{display:inline-flex;align-items:center;gap:3px}
@@ -369,9 +363,7 @@ button.trow:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bor
 .pc-new{font-size:13px;font-weight:700;line-height:1.35;color:var(--accent-ink);background:var(--accent);border-radius:12px;padding:7px 10px}
 .pc-tag{align-self:flex-start;font-size:11px;font-weight:700;color:var(--accent-tx);background:var(--accent-soft);border-radius:999px;padding:2px 8px}
 .pg-hero{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px 4px 8px;background:radial-gradient(circle at 50% 30%, var(--accent-soft), transparent 68%)}
-.pg-stage{width:min(70vw,270px)}
 .pg-say{font-size:14px;line-height:1.45;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;text-align:center;max-width:340px}
-.av-prev{width:140px;align-self:center}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
 .sw{width:36px;height:36px;border-radius:50%;border:2px solid rgba(0,0,0,.12);cursor:pointer;padding:0}
 .sw[aria-pressed="true"]{outline:3px solid var(--fg);outline-offset:2px}
@@ -596,7 +588,7 @@ h2{font-size:18px;font-weight:750;letter-spacing:-.01em;line-height:1.25}
 .welcomehero{gap:2px;padding:10px 16px 18px;align-items:stretch}
 .muscard{gap:12px}
 .musrow{display:flex;gap:10px;align-items:stretch}
-.musfig{flex:0 0 44%;height:270px}
+.musfig{flex:0 0 44%;height:300px}
 .musbar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
 .musbar span{display:block;height:100%;border-radius:99px;background:var(--accent)}
 .platebox{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:14px;background:var(--bg)}
@@ -827,7 +819,7 @@ let OBLOG = {};        // mese -> {log:[registrazioni obiettivi]}
 let CLI = {};          // id -> cliente seguito dal PT
 let LIVE = null;       // allenamento in corso
 let SH = {};           // dati condivisi caricati per la schermata
-const UI = { route: 'welcome', params: {}, sheet: null, ptab: 'profilo', metric: 'magra', forzaEx: null, mese: monthKey(new Date()), sett: weekKey(new Date()), login: { mode: 'cliente', role: 'pt', pt: 'no' }, err: '', showDone: false, nday: isoDate(new Date()), tips: null, tipsBusy: false };
+const UI = { route: 'welcome', params: {}, sheet: null, ptab: 'corpo', metric: 'magra', forzaEx: null, mese: monthKey(new Date()), sett: weekKey(new Date()), login: { mode: 'cliente', role: 'pt', pt: 'no' }, err: '', showDone: false, nday: isoDate(new Date()), tips: null, tipsBusy: false };
 let FILES = {};        // file scelti nei fogli (per chiave)
 let saveTimer = null;
 
@@ -871,12 +863,12 @@ function xpTotal(){
 function levelInfo(xp){ let L = 1, need = 120, cur = xp; while (cur >= need) { cur -= need; L++; need = 100 + 20 * L; } return { L, cur, need }; }
 const ATT_CAT = { boxe:'combat', kick:'combat', circuito:'circuito', funzionale:'circuito', spinning:'ritmo', danza:'ritmo', yoga:'mente', pilates:'mente', corsa:'cardio', bici:'cardio', nuoto:'cardio', vogatore:'cardio', camminata:'benessere', corpolibero:'corpo' };
 const CAT_LABEL = { forza:'forza in sala', iper:'sala pesi', cardio:'cardio', combat:'combattimento', circuito:'circuito', ritmo:'corsi a ritmo', mente:'yoga e pilates', corpo:'corpo libero', benessere:'benessere' };
-function mix(days){
-  const since = Date.now() - days * DAY;
+function mix(days, off){
+  const until = Date.now() - (off || 0) * DAY; const since = until - days * DAY;
   const m = { forza:0, iper:0, cardio:0, combat:0, circuito:0, ritmo:0, mente:0, corpo:0, benessere:0 };
   const sport = { corsa:0, bici:0, nuoto:0, vogatore:0 }, sotto = {};
   let heavyKey = 0, heavyAll = 0, setsTot = 0, sessN = 0;
-  sessions().filter(s => s.inizio >= since).forEach(s => {
+  sessions().filter(s => s.inizio >= since && s.inizio <= until).forEach(s => {
     sessN++;
     const cnt = { pesi:0, corpo:0, cardio:0 }; let repSum = 0, repN = 0;
     (s.esercizi || []).forEach(e => {
@@ -889,11 +881,11 @@ function mix(days){
     m[avg <= 6 ? 'forza' : 'iper'] += min * cnt.pesi / tot;
     m.corpo += min * cnt.corpo / tot; m.cardio += min * cnt.cardio / tot;
   });
-  S.attivita.filter(a => parseDate(a.data).getTime() >= since - DAY).forEach(a => {
+  S.attivita.filter(a => { const t = parseDate(a.data).getTime(); return t >= since - DAY && t <= until; }).forEach(a => {
     const min = +a.min || 0; const c = ATT_CAT[a.sotto] || 'circuito'; m[c] += min;
     if (sport[a.sotto] != null) sport[a.sotto] += min; sotto[a.sotto] = (sotto[a.sotto] || 0) + min;
   });
-  S.recupero.filter(r => parseDate(r.data).getTime() >= since - DAY).forEach(r => { m.benessere += r.tipo === 'mobilita' ? (+r.min || 0) : (+r.min || 0) * 0.5; });
+  S.recupero.filter(r => { const t = parseDate(r.data).getTime(); return t >= since - DAY && t <= until; }).forEach(r => { m.benessere += r.tipo === 'mobilita' ? (+r.min || 0) : (+r.min || 0) * 0.5; });
   const total = Object.values(m).reduce((a, b) => a + b, 0);
   const pct = {}; Object.keys(m).forEach(k => { pct[k] = total ? m[k] / total * 100 : 0; });
   return { m, pct, total, sport, sotto, heavyKey, heavyAll, avgSets: sessN ? setsTot / sessN : 0 };
@@ -948,10 +940,8 @@ function titolo(){
 }
 function latestInbody(){ return S.inbody.slice().sort((a, b) => a.data < b.data ? -1 : 1).pop() || null; }
 function latestPeso(){ const e = latestPesoEntry(); return e ? e.peso : null; }
-function bestFor(best, word){ let b = 0; Object.keys(best).forEach(k => { if (k.indexOf(word) >= 0 && !(word === 'stacco' && k.indexOf('rumeno') >= 0)) b = Math.max(b, best[k].v); }); return b || null; }
 function trainingDays(){ const set = {}; sessions().forEach(s => { set[isoDate(s.inizio)] = 1; }); (CLX ? [] : S.attivita).forEach(a => { set[a.data] = 1; }); return set; }
 function weeklyCounts(){ const c = {}; sessions().forEach(s => { const k = weekKey(s.inizio); c[k] = (c[k] || 0) + 1; }); S.attivita.forEach(a => { const k = weekKey(parseDate(a.data)); c[k] = (c[k] || 0) + 1; }); return c; }
-/* streak(): vedi streakInfo */
 function stats(){
   const st = {}, src = {}, g = S.profilo.genere, R = computeRecords(), peso = latestPeso();
   const FZ = forzaDettaglio(); st.forza = FZ.score; src.forza = FZ.lifts.length ? (FZ.prog ? 'esercizi base e progressi del mese, ' : '') + 'rispetto a ' + (FZ.sx === 'f' ? 'donne' : 'uomini') + (FZ.age ? ' di ' + FZ.age + ' anni' : '') + ': ' + FZ.lifts.map(l => l.lab.toLowerCase()).join(', ') : FZ.grezza ? 'stima grezza: registra squat, panca, stacco o trazioni' : (peso ? 'registra squat, panca, stacco o trazioni' : 'serve il peso');
@@ -965,10 +955,10 @@ function stats(){
   else { st.resistenza = minS; src.resistenza = minS == null ? 'registra cardio o corsi, o inserisci il VO2max' : 'minuti di cardio e corsi'; }
   const CI = compInfo(); st.composizione = CI.bf != null ? CI.score : null; src.composizione = CI.bf != null ? fmtN(CI.bf) + '% grasso, ' + CI.cat + ' (' + CI.fonte + ')' : 'serve InBody o le circonferenze';
   const c = weeklyCounts(); const weeksSince = Math.max(1, Math.min(12, Math.ceil((Date.now() - (S.creato || Date.now())) / (7 * DAY))));
-  let good = 0; for (let i = 0; i < weeksSince; i++) { const w = weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000)); if ((c[w] || 0) >= 2) good++; }
-  const str = streak(); st.costanza = (sessions().length + S.attivita.length) ? Math.round(good / weeksSince * 100) : null; src.costanza = str ? str + (str === 1 ? ' settimana' : ' settimane') + ' di fila' : 'almeno 2 sedute a settimana';
+  let good = 0, tot = 0; for (let i = 0; i < weeksSince; i++) { const w = weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000)); const ok = (c[w] || 0) >= 2; if (i === 0 && !ok && weeksSince > 1) continue; tot++; if (ok) good++; }
+  const str = streak(); st.costanza = (sessions().length + S.attivita.length) ? Math.round(good / Math.max(1, tot) * 100) : null; src.costanza = str ? str + (str === 1 ? ' settimana' : ' settimane') + ' di fila' : 'almeno 2 sedute a settimana';
   const ck = S.checkin.slice().sort((a, b) => a.settimana < b.settimana ? -1 : 1).pop();
-  const recW = S.recupero.filter(r => weekKey(parseDate(r.data)) === weekKey(new Date())).length;
+  const rec7 = addDays(isoDate(new Date()), -6); const recW = S.recupero.filter(r => r.data >= rec7).length;
   const RM = recuperoDaMattino();
   if (RM) { st.recupero = Math.round(clamp(RM.v * 0.8 + Math.min(20, recW * 5) - (ck && daysBetween(parseDate(ck.settimana), new Date()) <= 14 ? ((+ck.stress || 3) - 3) * 3 : 0), 0, 100)); src.recupero = 'check del mattino (' + RM.n + ' notti, media ' + fmtOre(RM.ore) + ') e sessioni di recupero'; }
   else if (ck && daysBetween(parseDate(ck.settimana), new Date()) <= 14) { st.recupero = Math.round(clamp(((+ck.sonnoQ) + (+ck.energia) + (6 - ck.stress)) / 15 * 75 + Math.min(25, recW * 6) - ((+ck.sonnoOre || 8) < 7 ? 5 : 0), 0, 100)); src.recupero = 'sonno, check-in e spa'; }
@@ -1191,7 +1181,6 @@ function foodFor(ds){ const mk = ds.slice(0, 7); return ((FOOD[mk] || {}).giorni
 function setFood(ds, list){ const mk = ds.slice(0, 7); FOOD[mk] = FOOD[mk] || { giorni: {} }; FOOD[mk].giorni = FOOD[mk].giorni || {}; FOOD[mk].giorni[ds] = list; saveFood(mk); }
 function sumItems(items){ const t = {}; MACRO_KEYS.concat(MICRO.map(m => m[0])).forEach(k => { t[k] = 0; }); items.forEach(i => { Object.keys(t).forEach(k => { t[k] += +i[k] || (i.extra && +i.extra[k]) || 0; }); }); return t; }
 function avgMicros(days){ const out = {}; MICRO.forEach(m => { out[m[0]] = 0; }); let n = 0, n2 = 0; for (let i = 0; i < days; i++) { const ds = addDays(isoDate(new Date()), -i); const it = foodFor(ds); if (!it.length) continue; n++; const t = sumItems(it); const nw = microHasNew(it); if (nw) n2++; MICRO.forEach(m => { if (MICRO_NEW.indexOf(m[0]) < 0 || nw) out[m[0]] += t[m[0]]; }); } if (n) MICRO.forEach(m => { const d = MICRO_NEW.indexOf(m[0]) < 0 ? n : n2; if (d) out[m[0]] = Math.round(out[m[0]] / d * 10) / 10; else delete out[m[0]]; }); return { n, out }; }
-function estimateTarget(){ const E = energia(); return E ? { kcal: E.kcal, proteine: E.proteine, carboidrati: E.carboidrati, grassi: E.grassi } : null; }
 const NUTR_FIELDS = '"kcal":number,"proteine":number,"carboidrati":number,"grassi":number,"fibre":number,"zuccheri":number,"saturi":number,"sodio":number,"potassio":number,"calcio":number,"ferro":number,"magnesio":number,"zinco":number,"iodio":number,"selenio":number,"vitA":number,"vitC":number,"vitD":number,"vitE":number,"vitK":number,"b6":number,"folati":number,"b12":number,"omega3":number,"alcol":number,"caffeina":number,"qualita":number,"pro":string,"contro":string';
 function cleanFood(raw, pasto){
   const out = [];
@@ -1286,17 +1275,6 @@ const MICRO_INFO = {
   b6: ['Aiuta a usare le proteine e a produrre energia: il fabbisogno sale con le proteine.', 'Pollo e tacchino, pesce, patate, banane, ceci, pistacchi.'],
   folati: ['Globuli rossi e rinnovo delle cellule. Il massimo sicuro vale per l\'acido folico di integratori e cibi arricchiti, non per quello naturale.', 'Verdure a foglia, legumi, asparagi, agrumi, cereali integrali.']
 };
-const SUPP_TO_MICRO = { 'Vitamina D':'vitD', 'Vitamina C':'vitC', 'Vitamina B12':'b12', 'Magnesio':'magnesio', 'Calcio':'calcio', 'Ferro':'ferro', 'Potassio':'potassio', 'Vitamina A':'vitA', 'Vitamina E':'vitE', 'Vitamina K':'vitK', 'Vitamina B6':'b6', 'Zinco':'zinco', 'Selenio':'selenio', 'Iodio':'iodio', 'Acido folico':'folati', 'Omega 3 (EPA+DHA)':'omega3' };
-function suppMicros(){
-  const out = {}, src = {};
-  if (S.nutri.contaInteg === false) return { out, src };
-  S.nutri.integratori.forEach(x => String(x.composizione || '').split(/\n|;|,(?!\d)/).map(l => l.trim()).filter(Boolean).forEach(l => {
-    const hit = SUPP_N.find(n => n[1].test(l)); if (!hit) return; const k = SUPP_TO_MICRO[hit[0]]; if (!k) return;
-    const a = suppAmount(l, hit[2], hit[0]); if (a == null || !(a > 0)) return;
-    out[k] = (out[k] || 0) + a; (src[k] = src[k] || []).push(x.nome);
-  }));
-  return { out, src };
-}
 
 /* ---------- obiettivi personali ---------- */
 const OB_AREE = [['lettura','Lettura'],['studio','Studio'],['lingue','Lingue'],['meditazione','Meditazione'],['creativita','Creatività e diario'],['corpo','Corpo e movimento'],['salute','Salute e sonno'],['cura','Cura di sé'],['casa','Casa e ordine'],['organizzazione','Lavoro e organizzazione'],['relazioni','Relazioni'],['digitale','Tempo digitale'],['benessere','Benessere'],['altro','Altro']];
@@ -1358,12 +1336,11 @@ function menteScore(){
   return Math.round(clamp(base + Math.min(15, recent * 2 + tr.filter(o => o.fatto).length * 5), 0, 100));
 }
 function nutriScore(){
-  let logged = 0, nA = 0, adh = 0, pro = 0, qs = 0, qn = 0; const today = isoDate(new Date());
-  for (let i = 0; i < 7; i++) { const ds = addDays(today, -i); const it = foodFor(ds).filter(x => x.tipo !== 'acqua'); if (!it.length) continue; logged++; const q = qualitaGiorno(it); if (q) { qs += q.score / 100; qn++; } const T = targetFor(ds); if (i === 0 || !T) continue; const t = sumItems(it); nA++; adh += clamp(1 - Math.abs(t.kcal - T.kcal) / T.kcal, 0, 1); pro += Math.min(1, t.proteine / Math.max(1, T.proteine)); }
+  let logged = 0, nA = 0, adh = 0, pro = 0, qs = 0, qn = 0; const today = isoDate(new Date()); const o0 = foodFor(today).some(x => x.tipo !== 'acqua') ? 0 : 1;
+  for (let i = o0; i < 7 + o0; i++) { const ds = addDays(today, -i); const it = foodFor(ds).filter(x => x.tipo !== 'acqua'); if (!it.length) continue; logged++; const q = qualitaGiorno(it); if (q) { qs += q.score / 100; qn++; } const T = targetFor(ds); if (i === 0 || !T) continue; const t = sumItems(it); nA++; adh += clamp(1 - Math.abs(t.kcal - T.kcal) / T.kcal, 0, 1); pro += Math.min(1, t.proteine / Math.max(1, T.proteine)); }
   if (!logged) return null;
   return Math.round(clamp(logged / 7 * 25 + (nA ? adh / nA * 20 + pro / nA * 20 : 20) + 35 * (qn ? qs / qn : 0.5), 0, 100));
 }
-function mobilitaScore(){ return mobilitaInfo().score; }
 
 /* ---------- profilo a ottagono ---------- */
 const STATS = [['forza','Forza'],['resistenza','Resistenza'],['mobilita','Mobilità'],['composizione','Composizione'],['recupero','Recupero'],['nutrizione','Nutrizione'],['mente','Mente'],['costanza','Costanza']];
@@ -1588,7 +1565,6 @@ function suppItemValues(x, qty){
   out.extra = extra; return out;
 }
 function integEntry(ds, id){ return foodFor(ds).find(i => i.integId === id) || null; }
-function integTaken(ds, id){ return foodFor(ds).filter(i => i.integId === id); }
 function setInteg(ds, x, qty){
   const list = foodFor(ds).filter(i => i.integId !== x.id); qty = +qty || 0;
   if (qty > 0) list.push(Object.assign({ id: rid(), pasto: 'integratori', nome: x.nome, quantita: qtyLab(qty, x.forma), qta: qty, fonte: 'integratore', integId: x.id }, suppItemValues(x, qty)));
@@ -2034,27 +2010,6 @@ function suppAmount(line, unit, name){
   const to = { 'µg': 0.001, mg: 1, g: 1000 }[unit];
   return v * f[u] / to;
 }
-function suppLocalCheck(list){
-  const per = {};
-  list.forEach(x => {
-    const lines = String(x.composizione || '').split(/\n|;|,(?!\d)/).map(l => l.trim()).filter(Boolean);
-    lines.forEach(l => {
-      const hit = SUPP_N.find(n => n[1].test(l)); if (!hit) return;
-      const a = suppAmount(l, hit[2], hit[0]);
-      const e = per[hit[0]] || (per[hit[0]] = { nome: hit[0], unit: hit[2], ul: hit[3], fonti: [], tot: 0, noto: true });
-      if (e.fonti.indexOf(x.nome) < 0) e.fonti.push(x.nome);
-      if (a == null) e.noto = false; else e.tot += a;
-    });
-    if (!lines.length) { const hit = SUPP_N.find(n => n[1].test(x.nome)); if (hit && !per[hit[0]]) per[hit[0]] = { nome: hit[0], unit: hit[2], ul: hit[3], fonti: [x.nome], tot: 0, noto: false }; }
-  });
-  const out = { doppi: [], oltre: [], senza: list.filter(x => !String(x.composizione || '').trim()).map(x => x.nome) };
-  Object.keys(per).forEach(k => { const e = per[k];
-    const tot = e.noto && e.tot > 0 ? (e.tot < 10 ? fmtN(e.tot, 1) : Math.round(e.tot)) + ' ' + e.unit : '';
-    if (e.fonti.length > 1) out.doppi.push({ nutriente: e.nome, fonti: e.fonti, totale: tot });
-    if (e.ul && e.noto && e.tot > e.ul) out.oltre.push(e.nome + ': ' + tot + ' al giorno dagli integratori, sopra il limite massimo tollerabile EFSA per adulti (' + e.ul + ' ' + e.unit + ')' + (e.nome === 'Magnesio' ? ', che per il magnesio riguarda solo quello da integratori' : '') + '.');
-  });
-  return out;
-}
 function parseSchedaText(text){
   const giorni = []; const warm = []; let cur = null; let pendingNote = null;
   const lines = String(text || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
@@ -2194,19 +2149,25 @@ async function loadFor(r){
 /* ================= grafica dinamica: solidi 3D sfaccettati disegnati su canvas (nessuna libreria) ================= */
 const FX = { items: {}, raf: 0, last: 0, still: false };
 try { const mq = window.matchMedia('(prefers-reduced-motion: reduce)'); FX.still = mq.matches; mq.addEventListener('change', e => { FX.still = e.matches; fxKick(); }); } catch(e){}
-function fxV(a, b){ return [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; }
-function fxCross(a, b){ return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
 function fxNorm(a){ const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
-/* tronco di prisma tra due punti: rx = mezza larghezza, rz = mezza profondità; g = gruppo (o funzione della normale) */
-function fxPrism(M, p0, p1, r0, r1, n, g, caps){
-  const a = fxNorm(fxV(p0, p1)); let u = fxCross(a, [0, 0, 1]); if (Math.hypot(u[0], u[1], u[2]) < 1e-4) u = [1, 0, 0]; u = fxNorm(u); const v = fxNorm(fxCross(a, u)); const base = M.v.length;
-  for (let k = 0; k < 2; k++) { const p = k ? p1 : p0, r = k ? r1 : r0; for (let i = 0; i < n; i++) { const t = (i + 0.5) / n * Math.PI * 2; const cx = Math.cos(t) * r[0], cz = Math.sin(t) * r[1]; M.v.push([p[0] + u[0] * cx + v[0] * cz, p[1] + u[1] * cx + v[1] * cz, p[2] + u[2] * cx + v[2] * cz]); } }
-  const c = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2];
-  for (let i = 0; i < n; i++) { const j = (i + 1) % n; M.f.push({ v: [base + i, base + j, base + n + j, base + n + i], g, c }); }
-  if (caps !== false) { const top = [], bot = []; for (let i = 0; i < n; i++) { top.push(base + n - 1 - i); bot.push(base + n + i); } M.f.push({ v: top, g, c }); M.f.push({ v: bot, g, c }); }
+/* figura umana a sezioni: ogni parte è una serie di anelli orizzontali raccordati (Catmull-Rom), così la superficie è liscia */
+function fxLoft(M, rings, seg, sub, gfn, bump, zb, yk){
+  const R = []; const cr = (a, b, c, d, t) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t);
+  for (let i = 0; i < rings.length - 1; i++) { const p = [rings[Math.max(0, i - 1)], rings[i], rings[i + 1], rings[Math.min(rings.length - 1, i + 2)]]; for (let s = 0; s < sub; s++) R.push(p[1].map((_, k) => cr(p[0][k], p[1][k], p[2][k], p[3][k], s / sub))); }
+  R.push(rings[rings.length - 1].slice()); const base = M.v.length;   // anello: [y, x, z, rx, rzDavanti, rzDietro]
+  R.forEach(r => { for (let i = 0; i < seg; i++) { const t = (i + 0.5) / seg * Math.PI * 2; const c = Math.cos(t), s = Math.sin(t); let x = r[1] + c * Math.max(0, r[3]), z = r[2] + s * Math.max(0, s > 0 ? r[4] : r[5]); if (bump) z += bump(x, r[0], s); M.v.push([x, r[0], z]); } });
+  for (let k = 0; k < R.length - 1; k++) { const a = R[k], b = R[k + 1]; const c = [(a[1] + b[1]) / 2, (a[0] + b[0]) / 2, (a[2] + b[2]) / 2];
+    const f0 = M.f.length; for (let i = 0; i < seg; i++) { const j = (i + 1) % seg; const t = (i + 1) / seg * Math.PI * 2, tl = (i + 0.5) / seg * Math.PI * 2, tr = (i + 1.5) / seg * Math.PI * 2; M.f.push({ v: [base + k * seg + i, base + k * seg + j, base + (k + 1) * seg + j, base + (k + 1) * seg + i], g: gfn(c[1], Math.sin(t), Math.cos(t)), gl: gfn(c[1], Math.sin(tl), Math.cos(tl)), gr: gfn(c[1], Math.sin(tr), Math.cos(tr)), c, zb: zb || 0, yk: yk ? yk(c[1]) : null }); }
+    for (let i = 0; i < seg; i++) { const f = M.f[f0 + i]; f.lf = M.f[f0 + (i + seg - 1) % seg]; f.rf = M.f[f0 + (i + 1) % seg]; if (k) { f.up = M.f[f0 - seg + i]; f.up.dn = f; } } }
+  [0, R.length - 1].forEach(k => { const r = R[k]; if (r[3] < 0.012) return; const v = []; for (let i = 0; i < seg; i++) v.push(base + k * seg + i); M.f.push({ v, g: gfn(r[0], 0, 0), c: [r[1], r[0] + (k ? 0.2 : -0.2), r[2]], zb: zb || 0 }); });
 }
 function fxFinish(M){   // normali nello spazio del modello, orientate verso l'esterno rispetto al baricentro della parte
-  M.f.forEach(f => { const P = f.v.map(i => M.v[i]); let n = [0, 0, 0]; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); } n = fxNorm(n); const m = [0, 0, 0]; P.forEach(q => { m[0] += q[0] / P.length; m[1] += q[1] / P.length; m[2] += q[2] / P.length; }); const c = f.c || [0, 0, 0]; let d = n[0] * (m[0] - c[0]) + n[1] * (m[1] - c[1]) + n[2] * (m[2] - c[2]); if (f.inv) d = -d; if (d < 0) n = [-n[0], -n[1], -n[2]]; f.n = n; if (typeof f.g === 'function') f.g = f.g(f.n); });
+  M.f.forEach(f => { const P = f.v.map(i => M.v[i]); let n = [0, 0, 0]; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); } n = fxNorm(n); const m = [0, 0, 0]; P.forEach(q => { m[0] += q[0] / P.length; m[1] += q[1] / P.length; m[2] += q[2] / P.length; }); const c = f.c || [0, 0, 0]; let d = n[0] * (m[0] - c[0]) + n[1] * (m[1] - c[1]) + n[2] * (m[2] - c[2]); if (f.inv) d = -d; if (d < 0) n = [-n[0], -n[1], -n[2]]; if (f.yk != null) n = fxNorm([n[0], n[1] * f.yk, n[2]]); f.n = n; if (typeof f.g === 'function') f.g = f.g(f.n); });
+  /* superfici lisce: normale ammorbidita con le facce sopra e sotto, poi una normale per ciascuno dei due bordi laterali */
+  const add = (a, b, k) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
+  M.f.forEach(f => { if (f.lf) f.ns = fxNorm(add(add(add([0, 0, 0], f.n, 2), (f.up || f).n, 1), (f.dn || f).n, 1)); });
+  M.f.forEach(f => { if (f.lf) { f.nl = fxNorm(add(f.ns, f.lf.ns, 1)); f.nr = fxNorm(add(f.ns, f.rf.ns, 1)); } });
+  M.f.forEach(f => { if (f.lf) { f.n = f.ns; f.lf = f.rf = f.up = f.dn = f.ns = null; } });
   return M;
 }
 const FX_MODELS = {
@@ -2216,23 +2177,26 @@ const FX_MODELS = {
     const O = [0, -0.12, 0]; const mid = (a, b) => [(M.v[a][0] + M.v[b][0]) / 2, (M.v[a][1] + M.v[b][1]) / 2, 0];
     for (let i = 0; i < 3; i++) { const j = (i + 1) % 3; M.f.push({ v: [i, j, 6 + j, 6 + i], g: 'gold', c: mid(i, 6 + j) }, { v: [3 + j, 3 + i, 9 + i, 9 + j], g: 'gold', c: mid(3 + i, 9 + j) }, { v: [j, i, 3 + i, 3 + j], g: 'gold', c: O }, { v: [6 + i, 6 + j, 9 + j, 9 + i], g: 'gold', c: O, inv: true }); }
     return fxFinish(M); },
-  /* manichino a basso numero di facce: ogni zona appartiene a un gruppo muscolare */
-  body(){ const M = { v: [], f: [] }; const FB = (front, back, side) => n => n[2] > 0.3 ? front : n[2] < -0.3 ? back : side;
-    fxPrism(M, [0, 1.8, 0], [0, 1.58, 0], [0.16, 0.18], [0.215, 0.235], 8, 'x'); fxPrism(M, [0, 1.58, 0], [0, 1.36, 0.01], [0.215, 0.235], [0.15, 0.17], 8, 'x'); fxPrism(M, [0, 1.38, 0], [0, 1.2, 0], [0.11, 0.115], [0.2, 0.13], 6, FB('x', 'Schiena', 'Schiena'), false);
-    fxPrism(M, [0, 1.22, 0], [0, 0.9, 0.02], [0.5, 0.2], [0.55, 0.27], 10, FB('Petto', 'Schiena', 'Schiena'));
-    fxPrism(M, [0, 0.9, 0.02], [0, 0.6, 0.01], [0.55, 0.27], [0.45, 0.23], 10, FB('Petto', 'Schiena', 'Schiena'), false);
-    fxPrism(M, [0, 0.6, 0.01], [0, 0.12, 0], [0.45, 0.23], [0.36, 0.19], 10, FB('Core', 'Schiena', 'Core'), false);
-    fxPrism(M, [0, 0.12, 0], [0, -0.14, -0.01], [0.36, 0.19], [0.41, 0.23], 10, FB('Core', 'Gambe', 'Gambe'), false);
-    fxPrism(M, [0, -0.14, -0.01], [0, -0.34, 0], [0.41, 0.23], [0.4, 0.22], 10, FB('Core', 'Gambe', 'Gambe'));
-    [-1, 1].forEach(s => {
-      fxPrism(M, [s * 0.5, 1.24, 0], [s * 0.72, 0.92, 0], [0.15, 0.17], [0.17, 0.18], 7, 'Spalle');
-      fxPrism(M, [s * 0.7, 0.98, 0], [s * 0.84, 0.4, 0], [0.145, 0.155], [0.11, 0.115], 7, 'Braccia');
-      fxPrism(M, [s * 0.84, 0.42, 0], [s * 0.97, -0.14, 0.05], [0.115, 0.11], [0.075, 0.07], 7, 'Braccia');
-      fxPrism(M, [s * 0.97, -0.14, 0.05], [s * 1.01, -0.36, 0.07], [0.075, 0.05], [0.055, 0.04], 5, 'x');
-      fxPrism(M, [s * 0.205, -0.3, 0], [s * 0.225, -1.04, 0], [0.205, 0.225], [0.135, 0.145], 8, 'Gambe');
-      fxPrism(M, [s * 0.225, -1.02, 0], [s * 0.22, -1.34, -0.03], [0.13, 0.15], [0.125, 0.15], 8, 'Gambe', false);
-      fxPrism(M, [s * 0.22, -1.34, -0.03], [s * 0.215, -1.72, -0.01], [0.125, 0.15], [0.075, 0.08], 8, 'Gambe');
-      fxPrism(M, [s * 0.215, -1.72, 0.07], [s * 0.215, -1.82, 0.09], [0.085, 0.17], [0.095, 0.2], 6, 'x'); });
+  /* figura umana liscia: ogni zona sfuma verso il gruppo muscolare a cui appartiene */
+  body(){
+  const M = { v: [], f: [] }; const G = (x, y, cx, cy, sx, sy) => Math.exp(-((x - cx) * (x - cx) / (sx * sx) + (y - cy) * (y - cy) / (sy * sy)));
+  /* testa e collo */
+  fxLoft(M, [[1.8, 0, 0, 0.02, 0.02, 0.02], [1.775, 0, 0, 0.1, 0.115, 0.125], [1.73, 0, 0, 0.15, 0.17, 0.185], [1.66, 0, 0, 0.172, 0.2, 0.208], [1.58, 0, 0.005, 0.178, 0.208, 0.205], [1.5, 0, 0.012, 0.168, 0.2, 0.19], [1.43, 0, 0.02, 0.148, 0.18, 0.16], [1.37, 0, 0.03, 0.118, 0.15, 0.125], [1.33, 0, 0.04, 0.07, 0.1, 0.08], [1.315, 0, 0.04, 0.02, 0.03, 0.03]], 18, 2, () => 'x', (x, y, s) => s > 0 ? 0.03 * G(x, y, 0, 1.53, 0.035, 0.06) + 0.012 * G(x, y, 0, 1.62, 0.12, 0.025) - 0.014 * G(Math.abs(x), y, 0.07, 1.585, 0.04, 0.025) + 0.01 * G(x, y, 0, 1.42, 0.05, 0.03) : 0);
+  fxLoft(M, [[1.44, 0, -0.02, 0.1, 0.1, 0.105], [1.34, 0, -0.015, 0.1, 0.1, 0.105], [1.26, 0, -0.01, 0.108, 0.105, 0.11]], 12, 1, () => 'x', null, -0.12);
+  /* busto: spalle larghe, vita stretta, bacino; i rilievi (pettorali, addominali, dorsali, glutei) sono piccole gobbe sulla superficie */
+  const torsoBump = (x, y, s) => { const ax = Math.abs(x); if (s > 0) return 0.024 * G(ax, y, 0.19, 0.95, 0.17, 0.13) - 0.012 * G(ax, y, 0, 0.92, 0.03, 0.14) + [0.7, 0.57, 0.44, 0.31].reduce((a, cy) => a + 0.011 * G(ax, y, 0.075, cy, 0.05, 0.045), 0) - 0.01 * G(ax, y, 0, 0.5, 0.02, 0.26); return -(0.03 * G(ax, y, 0.2, 0.86, 0.13, 0.2) + 0.05 * G(ax, y, 0.16, -0.04, 0.13, 0.13) - 0.018 * G(ax, y, 0, 0.6, 0.03, 0.4)); };
+  const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  /* a ogni faccia quanto appartiene a ciascun gruppo: i confini sfumano invece di fare scalini */
+  const tg = (y, s, c) => { const ax = Math.abs(c) * 0.37; const fr = sm(0, 0.35, s), bk = sm(-0.05, -0.4, s), sd = Math.max(0, 1 - fr - bk);
+    return { Petto: fr * sm(0.05, 0.85, G(ax, y, 0.2, 0.98, 0.28, 0.22)) * sm(1.2, 1.1, y), Core: (fr + sd) * sm(0.8, 0.66, y) * sm(-0.06, 0.06, y + 0.3 - 0.95 * ax), Schiena: bk * sm(0.04, 0.2, y) * sm(1.28, 1.18, y) + sd * sm(0.66, 0.8, y) * sm(1.06, 0.94, y), Gambe: Math.max(bk * sm(0.2, 0.04, y), (fr + sd) * sm(0.06, -0.06, y + 0.3 - 0.95 * ax)) }; };
+  fxLoft(M, [[1.3, 0, -0.01, 0.105, 0.105, 0.11], [1.24, 0, -0.01, 0.13, 0.11, 0.125], [1.2, 0, -0.01, 0.29, 0.12, 0.145], [1.16, 0, -0.005, 0.375, 0.14, 0.165], [1.1, 0, 0, 0.385, 0.165, 0.18], [1.0, 0, 0.005, 0.385, 0.195, 0.19], [0.9, 0, 0.008, 0.38, 0.2, 0.2], [0.8, 0, 0.008, 0.365, 0.198, 0.2], [0.7, 0, 0.005, 0.345, 0.195, 0.19], [0.58, 0, 0.003, 0.315, 0.18, 0.175], [0.46, 0, 0, 0.288, 0.168, 0.165], [0.36, 0, 0, 0.272, 0.162, 0.16], [0.26, 0, 0, 0.278, 0.162, 0.165], [0.14, 0, 0, 0.3, 0.166, 0.18], [0.02, 0, 0, 0.325, 0.17, 0.195], [-0.08, 0, 0, 0.332, 0.168, 0.2], [-0.16, 0, 0, 0.334, 0.164, 0.198], [-0.24, 0, 0, 0.332, 0.158, 0.19], [-0.31, 0, 0, 0.322, 0.15, 0.175], [-0.37, 0, 0, 0.27, 0.13, 0.15], [-0.43, 0, 0, 0.12, 0.07, 0.08], [-0.45, 0, 0, 0.02, 0.02, 0.02]], 22, 2, tg, torsoBump);
+  [-1, 1].forEach(sd => { const X = v => sd * v;
+    /* braccio: deltoide, bicipite e tricipite, gomito, avambraccio, mano */
+    fxLoft(M, [[1.222, X(0.43), 0, 0.01, 0.01, 0.01], [1.2, X(0.445), 0, 0.055, 0.075, 0.075], [1.15, X(0.465), 0, 0.098, 0.116, 0.112], [1.07, X(0.485), 0, 0.118, 0.13, 0.126], [0.97, X(0.5), 0, 0.11, 0.12, 0.12], [0.87, X(0.515), 0, 0.098, 0.108, 0.112], [0.77, X(0.528), 0.004, 0.098, 0.116, 0.112], [0.67, X(0.54), 0.006, 0.096, 0.112, 0.106], [0.55, X(0.553), 0.006, 0.084, 0.092, 0.092], [0.45, X(0.563), 0.008, 0.072, 0.076, 0.08], [0.37, X(0.572), 0.012, 0.08, 0.082, 0.08], [0.27, X(0.582), 0.018, 0.082, 0.084, 0.078], [0.13, X(0.596), 0.026, 0.066, 0.068, 0.064], [0.01, X(0.608), 0.034, 0.05, 0.05, 0.046], [-0.08, X(0.616), 0.04, 0.046, 0.036, 0.034]], 14, 2, y => ({ Spalle: sm(0.84, 0.96, y), Braccia: sm(0.96, 0.84, y) }));
+    fxLoft(M, [[-0.07, X(0.616), 0.04, 0.045, 0.034, 0.032], [-0.13, X(0.621), 0.046, 0.05, 0.03, 0.028], [-0.2, X(0.627), 0.052, 0.054, 0.03, 0.026], [-0.28, X(0.63), 0.06, 0.046, 0.027, 0.023], [-0.345, X(0.629), 0.066, 0.03, 0.021, 0.018], [-0.375, X(0.628), 0.069, 0.01, 0.01, 0.008]], 12, 2, () => 'x');
+    /* gamba: quadricipite, ginocchio, polpaccio, caviglia, piede */
+    fxLoft(M, [[-0.2, X(0.172), 0, 0.02, 0.02, 0.02], [-0.24, X(0.173), 0.002, 0.1, 0.1, 0.12], [-0.3, X(0.174), 0.004, 0.146, 0.148, 0.165], [-0.36, X(0.176), 0.008, 0.156, 0.168, 0.168], [-0.44, X(0.179), 0.01, 0.152, 0.17, 0.158], [-0.54, X(0.187), 0.01, 0.138, 0.152, 0.142], [-0.68, X(0.189), 0.008, 0.118, 0.128, 0.122], [-0.8, X(0.19), 0.006, 0.1, 0.11, 0.102], [-0.9, X(0.19), 0.008, 0.092, 0.104, 0.09], [-0.98, X(0.19), 0.002, 0.09, 0.092, 0.098], [-1.1, X(0.191), -0.008, 0.1, 0.088, 0.122], [-1.22, X(0.191), -0.01, 0.096, 0.082, 0.118], [-1.38, X(0.19), -0.006, 0.072, 0.07, 0.084], [-1.54, X(0.19), -0.002, 0.053, 0.056, 0.06], [-1.66, X(0.19), 0, 0.047, 0.052, 0.054]], 16, 2, () => 'Gambe', null, 0.3, y => sm(-0.34, -0.5, y));
+    fxLoft(M, [[-1.66, X(0.19), 0, 0.03, 0.035, 0.035], [-1.7, X(0.19), 0.005, 0.052, 0.07, 0.058], [-1.75, X(0.192), 0.01, 0.062, 0.17, 0.062], [-1.79, X(0.194), 0.012, 0.066, 0.2, 0.06], [-1.81, X(0.194), 0.012, 0.062, 0.195, 0.056]], 14, 2, () => 'x', null, 0.24); });
     return fxFinish(M); }
 };
 const FX_GOLD = [[38, 28, 6], [120, 90, 16], [212, 175, 55], [246, 222, 130], [255, 246, 208]];
@@ -2244,21 +2208,25 @@ function fxDraw(it){
   const rot = p => { const x = p[0] * cy + p[2] * sy, z0 = -p[0] * sy + p[2] * cy; return [x, p[1] * cp - z0 * sp, p[1] * sp + z0 * cp]; };
   const V = M.v.map(rot); const L = fxNorm([-0.45, 0.75, 0.65]), Hh = fxNorm([L[0], L[1], L[2] + 1]);
   if (it.glow) { const g = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, Math.min(W, H) * 0.62); g.addColorStop(0, 'rgba(212,175,55,.20)'); g.addColorStop(1, 'rgba(212,175,55,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
-  const out = [];
+  if (it.shadow) { const q = rot([0, it.shadow, 0]), s0 = S / (D - q[2]); const x = W / 2 + q[0] * s0, y = H * it.cy - q[1] * s0, rx = 0.62 * s0, ry = rx * 0.2; ctx.save(); ctx.translate(x, y); ctx.scale(1, ry / rx); const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(0.6, 'rgba(0,0,0,.22)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  const out = []; const kS = it.spec != null ? it.spec : 0.5, kR = it.rim || 0, amb = it.amb || 0.16, body = it.kind === 'body';
+  const shade = (n, load) => { const dif = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2]), spec = Math.pow(Math.max(0, n[0] * Hh[0] + n[1] * Hh[1] + n[2] * Hh[2]), 22); const t = amb + dif * 0.5 + spec * kS + kR * Math.pow(1 - Math.min(1, Math.abs(n[2])), 3); let c;
+    if (load < 0) c = fxRamp(FX_GREY, t * (body ? 0.92 : 0.8)); else if (load >= 1) c = fxRamp(FX_GOLD, t); else if (load <= 0.01) c = fxRamp(FX_GREY, t); else { const a = fxRamp(FX_GREY, t), b = fxRamp(FX_GOLD, t * (body ? 0.82 + 0.18 * load : 0.5 + 0.5 * load)); const m = body ? Math.pow(load, 0.7) : 0.55 + load * 0.45; c = [0, 1, 2].map(i => a[i] + (b[i] - a[i]) * m); }
+    return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; };
   M.f.forEach(f => { const n = rot(f.n); let cx = 0, cyy = 0, cz = 0; f.v.forEach(i => { cx += V[i][0]; cyy += V[i][1]; cz += V[i][2]; }); const k = f.v.length; cx /= k; cyy /= k; cz /= k;
     if (n[0] * -cx + n[1] * -cyy + n[2] * (D - cz) <= 0) return;
-    const dif = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2]), spec = Math.pow(Math.max(0, n[0] * Hh[0] + n[1] * Hh[1] + n[2] * Hh[2]), 22);
-    const load = f.g === 'gold' ? 1 : f.g === 'x' ? -1 : (it.load && it.load[f.g]) || 0; let t = (it.amb || 0.16) + dif * 0.5 + spec * 0.5; let c;
-    if (load < 0) c = fxRamp(FX_GREY, t * 0.8); else if (load >= 1) c = fxRamp(FX_GOLD, t); else if (load <= 0) c = fxRamp(FX_GREY, t); else { const a = fxRamp(FX_GREY, t), b = fxRamp(FX_GOLD, t * (0.5 + 0.5 * load)); const m = 0.55 + load * 0.45; c = [0, 1, 2].map(i => a[i] + (b[i] - a[i]) * m); }
-    out.push({ z: cz, f, col: 'rgb(' + c.map(x => Math.round(x)).join(',') + ')' }); });
-  out.sort((a, b) => a.z - b.z); ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1, it.dpr * 0.75);
-  out.forEach(o => { ctx.beginPath(); o.f.v.forEach((i, k) => { const p = V[i], s = S / (D - p[2]); const x = W / 2 + p[0] * s, y = H * it.cy - p[1] * s; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.closePath(); ctx.fillStyle = o.col; ctx.strokeStyle = o.col; ctx.fill(); ctx.stroke(); });
+    const lo = g => { if (g === 'gold') return 1; if (g === 'x') return -1; if (!it.load) return 0; if (typeof g === 'string') return it.load[g] || 0; let v = 0; for (const k2 in g) v += g[k2] * (it.load[k2] || 0); return Math.min(1, v); };
+    out.push(f.nl ? { z: cz + (f.zb || 0), f, cl: shade(rot(f.nl), lo(f.gl || f.g)), cr: shade(rot(f.nr), lo(f.gr || f.g)) } : { z: cz + (f.zb || 0), f, col: shade(n, lo(f.g)) }); });
+  out.sort((a, b) => a.z - b.z); ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1, it.dpr * 0.75); const P = [];
+  out.forEach(o => { const fv = o.f.v; ctx.beginPath(); for (let k = 0; k < fv.length; k++) { const p = V[fv[k]], s = S / (D - p[2]); const x = W / 2 + p[0] * s, y = H * it.cy - p[1] * s; P[k * 2] = x; P[k * 2 + 1] = y; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.closePath();
+    let st = o.col || o.cl; if (o.cl && o.cl !== o.cr) { /* sfumatura tra i due bordi della faccia: la superficie sembra curva, non a spicchi */ st = ctx.createLinearGradient((P[0] + P[6]) / 2, (P[1] + P[7]) / 2, (P[2] + P[4]) / 2, (P[3] + P[5]) / 2); st.addColorStop(0, o.cl); st.addColorStop(1, o.cr); }
+    ctx.fillStyle = st; ctx.strokeStyle = st; ctx.fill(); ctx.stroke(); });
 }
 function fxTick(ts){
   FX.raf = 0; const dt = Math.min(0.05, (ts - (FX.last || ts)) / 1000); FX.last = ts; let live = false;
   Object.keys(FX.items).forEach(k => { const it = FX.items[k]; if (!it.cv.isConnected) return; const idle = !it.drag;
     if (idle) { if (Math.abs(it.vy) > 0.02) { it.yaw += it.vy * dt; it.vy *= Math.pow(0.05, dt); it.dirty = true; } else if (!FX.still) { it.yaw += it.spin * dt; it.dirty = true; } }
-    if (it.dirty) { fxDraw(it); it.dirty = false; } if (!FX.still || it.drag || Math.abs(it.vy) > 0.02) live = true; });
+    it.fr = (it.fr || 0) + 1; if (it.dirty && (it.kind !== 'body' || it.drag || it.fr % 2 === 0)) { fxDraw(it); it.dirty = false; } if (!FX.still || it.drag || Math.abs(it.vy) > 0.02) live = true; });
   if (live && document.visibilityState === 'visible') FX.raf = requestAnimationFrame(fxTick); else FX.last = 0;
 }
 function fxKick(){ if (!FX.raf) FX.raf = requestAnimationFrame(fxTick); }
@@ -2266,7 +2234,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function fxItem(key, kind, arg){
   let it = FX.items[key]; if (it && it.sig === kind + '|' + arg) return it;
   const cv = it ? it.cv : document.createElement('canvas'); cv.className = 'fxcv'; cv.setAttribute('aria-hidden', 'true');
-  const base = { delta: { fitW: 3.1, fitH: 2.9, cy: 0.5, pitch: 0.18, spin: 0.7, glow: true }, body: { fitW: 2.12, fitH: 3.78, cy: 0.5, pitch: 0.05, spin: 0.45, glow: false, amb: 0.3 } }[kind];
+  const base = { delta: { fitW: 3.1, fitH: 2.9, cy: 0.5, pitch: 0.18, spin: 0.7, glow: true }, body: { fitW: 1.72, fitH: 3.86, cy: 0.5, pitch: 0.06, spin: 0.45, glow: false, amb: 0.27, spec: 0.16, rim: 0.2, shadow: -1.81 } }[kind];
   const n = Object.assign({ cv, ctx: cv.getContext('2d'), kind, sig: kind + '|' + arg, model: FX_MODELS[kind](+arg || 0), yaw: it ? it.yaw : (kind === 'body' ? 0.5 : 0.6), vy: 0, drag: null, dirty: true, dpr: 1, load: null }, base);
   if (!it) {
     cv.addEventListener('pointerdown', e => { const I = FX.items[key]; I.drag = { x: e.clientX, t: performance.now(), yaw: I.yaw }; I.vy = 0; try { cv.setPointerCapture(e.pointerId); } catch(e2){} fxKick(); });
@@ -2302,7 +2270,7 @@ function muscoliSett(list){
 function muscoliCard(list, key, chi){
   const W = muscoliSett(list); const tot = MUS_G.reduce((a, g) => a + W.sets[g], 0); const mx = Math.max(10, ...MUS_G.map(g => W.sets[g])); const zero = MUS_G.filter(g => !W.sets[g]);
   return '<div class="card ink muscard"><div class="row"><span class="eyebrow">Muscoli allenati · ultimi 7 giorni</span><span class="tiny muted">' + W.n + (W.n === 1 ? ' seduta' : ' sedute') + '</span></div>'
-    + '<div class="musrow"><div class="fx3d musfig" data-fx="body" data-key="body-' + esc(key || 'me') + '" data-load="' + esc(JSON.stringify(W.load)) + '" role="img" aria-label="Figura 3D: i gruppi muscolari allenati sono in oro"></div>'
+    + '<div class="musrow"><div class="fx3d musfig" data-fx="body" data-key="body-' + esc(key || 'me') + '" data-load="' + esc(JSON.stringify(W.load)) + '" role="img" aria-label="Figura umana in 3D: i gruppi muscolari allenati sono in oro"></div>'
     + '<div class="stack" style="gap:9px;flex:1;justify-content:center">' + MUS_G.map(g => '<div class="stack" style="gap:3px"><div class="row"><span class="small" style="font-weight:650' + (W.sets[g] ? '' : ';opacity:.55') + '">' + g + '</span><span class="mono tiny" style="opacity:.8">' + W.sets[g] + ' serie</span></div><div class="musbar"><span style="width:' + Math.round(W.sets[g] / mx * 100) + '%"></span></div></div>').join('') + '</div></div>'
     + '<span class="tiny muted" style="line-height:1.4">' + (tot ? (zero.length ? 'Questa settimana ' + (chi ? chi + ' non ha ancora' : 'non hai ancora') + ' toccato: ' + zero.join(', ').toLowerCase() + '. ' : 'Tutti i gruppi hanno lavorato. ') : 'Nessun allenamento negli ultimi 7 giorni: la figura si accende in oro dove lavori. ') + 'Trascina la figura per girarla.</span></div>';
 }
@@ -2425,7 +2393,7 @@ function stileInfo(){
   if (days) { const lim = sexOf() === 'f' || (ageOf() || 30) >= 65 ? 1 : 2; const ua = alc / 12 / days; const sc = binge ? 15 : ua === 0 ? 100 : ua <= lim * 0.5 ? 85 : ua <= lim ? 65 : 35; parts.push({ lab: 'Alcol', score: sc, txt: ua === 0 ? 'niente alcol registrato' : fmtN(ua, 1) + ' unità al giorno in media' + (binge ? ', con un eccesso in una sola occasione' : '') }); }
   const ck = S.checkin.slice().sort((a, b) => a.settimana < b.settimana ? -1 : 1).pop(); const RMs = recuperoDaMattino();
   if (RMs || (ck && daysBetween(parseDate(ck.settimana), new Date()) <= 21)) { const h = RMs ? Math.round(RMs.ore * 10) / 10 : +ck.sonnoOre || 0; parts.push({ lab: 'Sonno', score: h >= 7 && h <= 9 ? 100 : (h >= 6.5 && h < 7) || (h > 9 && h <= 10) ? 75 : h >= 6 ? 55 : 35, txt: fmtN(h) + ' ore a notte' }); }
-  if (Date.now() - (S.creato || Date.now()) > 7 * DAY) { const c = weeklyCounts(); let tot = 0; for (let i = 0; i < 4; i++) tot += c[weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000))] || 0; const avg = tot / 4; parts.push({ lab: 'Movimento', score: avg >= 3 ? 100 : avg >= 2 ? 75 : avg >= 1 ? 45 : 20, txt: fmtN(avg, 1) + ' allenamenti a settimana' }); }
+  if (Date.now() - (S.creato || Date.now()) > 7 * DAY) { const da = addDays(today, -27); const tot = sessions().filter(x => isoDate(x.inizio) >= da).length + S.attivita.filter(a => a.data >= da).length; const avg = tot / 4; parts.push({ lab: 'Movimento', score: avg >= 3 ? 100 : avg >= 2 ? 75 : avg >= 1 ? 45 : 20, txt: fmtN(avg, 1) + ' allenamenti a settimana' }); }
   if (!parts.length) return null;
   const w = { 'Qualità del cibo': 0.45, 'Alcol': 0.2, 'Sonno': 0.2, 'Movimento': 0.15 }; let sw = 0, s = 0; parts.forEach(p => { sw += w[p.lab]; s += w[p.lab] * p.score; });
   return { score: Math.round(s / sw), parts };
@@ -2610,7 +2578,7 @@ function mobilitaInfo(){
   const minW = Math.round(min / 4); const prat = ever ? Math.round(Math.min(100, minW / 60 * 75)) : null;
   const last = (S.mobtest || []).slice().sort((a, b) => a.data < b.data ? -1 : 1).pop(); const fresh = !!last && daysBetween(parseDate(last.data), new Date()) <= 120;
   const X = last ? mobAree(last.r || {}) : { aree: [], asym: [] }; const T = X.aree.length ? Math.round(X.aree.reduce((a, x) => a + x.score, 0) / X.aree.length) : null;
-  const score = T != null ? Math.round(T * 0.75 + (prat || 0) * 0.25) : prat != null ? Math.min(65, prat) : null;
+  const vecchio = last ? clamp((daysBetween(parseDate(last.data), new Date()) - 120) / 30 * 0.03, 0, 0.2) : 0; const score = T != null ? Math.round(T * (1 - vecchio) * 0.75 + (prat || 0) * 0.25) : prat != null ? Math.min(65, prat) : null;
   const debole = X.aree.slice().sort((a, b) => a.score - b.score)[0]; return { score, T, prat, minW, last, fresh, aree: X.aree, asym: X.asym, debole: debole && debole.score < 80 ? debole : null };
 }
 function mobilitaCard(){
@@ -2956,6 +2924,7 @@ function tabRecAndamento(){
       + (x.n ? wBars(x.w, { h: 84, min: t[0] === 'sauna' ? 4 : 3, line: t[0] === 'sauna' ? 2 : t[0] === 'freddo' ? 2 : t[0] === 'mobilita' ? 3 : 0, lab, cls: (val) => (t[0] === 'idro' || val >= (t[0] === 'mobilita' ? 3 : 2)) ? 'ok' : 'neu', aria: (val, i) => 'Settimana dal ' + fmtD(parseDate(R.W[i].da)) + ': ' + val + ' volte' }) : '')
       + '<span class="small" style="line-height:1.45">' + esc(v.txt) + '</span>'
       + (p.n || x.n ? '<span class="tiny muted">' + (Math.abs(a - pa) < 0.3 ? 'Come nelle ' + nw + ' settimane prima.' : (a > pa ? 'In aumento' : 'In calo') + ': nelle ' + nw + ' settimane prima erano ' + f1(pa) + ' a settimana.') + '</span>' : '') + '</div>'; });
+  h += recStoricoCards();
   h += '<span class="tiny muted" style="line-height:1.45">Le soglie vengono da studi su grandi gruppi di persone (per la sauna soprattutto finlandesi, osservazionali): indicano una tendenza, non una garanzia per il singolo. Per il freddo le prove sono più deboli che per la sauna. Problemi di cuore o di pressione, o in gravidanza? Chiedi al medico prima di usare sauna e acqua fredda.</span>';
   return h;
 }
@@ -3042,15 +3011,35 @@ SCREENS.prenota = function(){
   return h + '</div>';
 };
 
+/* minuti di cardio delle ultime 4 settimane: è il dato che corregge la statistica Resistenza */
+function cardioSettCard(){
+  const W = [3, 2, 1, 0].map(k => { const X = mix(7, k * 7); return Math.round(X.m.cardio + X.m.circuito + X.m.combat + X.m.ritmo); }); const avg = Math.round(W.reduce((a, b) => a + b, 0) / 4); const oggi = isoDate(new Date());
+  return '<div class="card"><div class="row"><div class="stack"><span class="eyebrow">Cardio a settimana</span><span class="big-num" style="font-size:28px">' + avg + ' <span class="small muted">/ 150 minuti</span></span></div><span class="chip ' + (avg >= 150 ? 'ok' : avg >= 75 ? '' : 'warn') + '">' + (avg >= 150 ? 'obiettivo raggiunto' : avg >= 75 ? 'a metà strada' : 'poco') + '</span></div>'
+    + wBars(W, { line: 150, min: 150, lab: i => { const d = parseDate(addDays(oggi, -(7 * (3 - i) + 6))); return d.getDate() + ' ' + MM[d.getMonth()]; }, cls: v => v >= 150 ? 'ok' : 'neu', aria: (v, i) => 'Settimana ' + (i + 1) + ' di 4: ' + v + ' minuti' })
+    + '<span class="tiny muted" style="line-height:1.4">Media delle ultime 4 settimane: corsa, bici, nuoto, vogatore, corsi e la parte di cardio delle sedute. 150 minuti a settimana sono la soglia minima consigliata per la salute; sotto, la statistica Resistenza scende fino al 10%.</span>'
+    + '<button type="button" class="btn sm" data-a="sheet" data-k="attivita">Registra un\'attività</button></div>';
+}
+function nuotoCard(){
+  const swims = S.attivita.filter(a => a.sotto === 'nuoto').sort((a, b) => a.data < b.data ? 1 : -1); if (!swims.length) return ''; const l = swims[0]; const pace = l.km ? (l.min * 60) / (l.km * 10) : null;
+  return '<div class="card"><div class="row"><h2>Nuoto · ' + esc(fmtD(parseDate(l.data))) + '</h2><span class="chip">' + swims.length + ' in totale</span></div><div class="grid3"><div class="stack"><span class="tiny muted">Distanza</span><span class="big-num" style="font-size:17px">' + (l.km ? fmtN(l.km * 1000, 0) + ' m' : '—') + '</span></div><div class="stack"><span class="tiny muted">Tempo</span><span class="big-num" style="font-size:17px">' + fmtMin(l.min) + '</span></div><div class="stack"><span class="tiny muted">Passo /100 m</span><span class="big-num" style="font-size:17px">' + (pace ? Math.floor(pace / 60) + ':' + pad(Math.round(pace % 60)) : '—') + '</span></div></div></div>';
+}
+/* storico dei check e dei minuti di recupero: sta nell'andamento del recupero */
+function recStoricoCards(){
+  let h = '';
+    const cks = S.checkin.slice().sort((a, b) => a.settimana < b.settimana ? 1 : -1).slice(0, 8);
+  h += '<div class="card"><div class="row"><h2>Settimane in sintesi</h2><button type="button" class="link" data-a="sheet" data-k="mattino">Check del mattino</button></div>';
+  if (!cks.length) h += '<div class="empty">Si compila da sola con i check del mattino: media di sonno, qualità ed energia della settimana, più lo stress.</div>';
+  else h += '<div class="tablewrap"><table class="t" style="min-width:0"><thead><tr><th>Settimana</th><th>Sonno</th><th>Qualità</th><th>Energia</th><th>Stress</th></tr></thead><tbody>' + cks.map(c => '<tr><td>' + esc(fmtD(parseDate(c.settimana))) + '</td><td class="mono">' + fmtN(c.sonnoOre) + ' h</td><td class="mono">' + c.sonnoQ + '</td><td class="mono">' + c.energia + '</td><td class="mono">' + c.stress + '</td></tr>').join('') + '</tbody></table></div>';
+  h += '</div>';
+  const weeks = []; for (let i = 5; i >= 0; i--) { const w = weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000)); weeks.push({ x: fmtD(parseDate(w)), y: S.recupero.filter(r => weekKey(parseDate(r.data)) === w).reduce((a, r) => a + (+r.min || 0), 0) }); }
+  h += '<div class="card"><div class="row"><h2>Minuti di recupero a settimana</h2><button type="button" class="link" data-a="go" data-r="recupero">Registra</button></div>' + (weeks.some(w => w.y > 0) ? lineChart(weeks, 'min') : '<div class="empty">Sauna, acqua fredda, idromassaggio e mobilità compariranno qui.</div>') + '</div>';
+  return h;
+}
 SCREENS.progressi = function(){
-  const tab = UI.ptab === 'profilo' ? 'corpo' : UI.ptab; const role = S.profilo.ruolo;
+  const tab = ['corpo', 'forza', 'cardio', 'mobilita'].indexOf(UI.ptab) >= 0 ? UI.ptab : UI.ptab === 'benessere' ? 'cardio' : 'corpo';
   let h = '<div class="screen">' + topbar('I tuoi dati in dettaglio', 'Progressi', { back: 'livelli' });
-  h += '<div class="seg" role="tablist">' + [['corpo','Corpo'],['forza','Forza'],['benessere','Cardio e benessere']].map(t => '<button type="button" role="tab" aria-selected="' + (tab === t[0]) + '" data-a="ptab" data-v="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
-  if (tab === 'profilo') {
-    const S2 = stats(); h += profileCard(false);
-    h += '<div class="card"><h2>Da dove arrivano i valori</h2>' + STATS.map(s => '<div class="stack"><div class="row"><span style="font-weight:600">' + s[1] + '</span><span class="mono">' + (S2.st[s[0]] == null ? '—' : S2.st[s[0]]) + '</span></div><div class="bar"><span style="width:' + (S2.st[s[0]] || 0) + '%"></span></div><span class="tiny muted">' + esc(S2.src[s[0]]) + '</span></div>').join('') + '</div>';
-    h += '<div class="grid2"><button type="button" class="btn" data-a="go" data-r="obiettivi">Abitudini</button><button type="button" class="btn" data-a="go" data-r="recupero">Recupero</button></div>';
-  } else if (tab === 'corpo') {
+  h += '<div class="seg" role="tablist">' + [['corpo','Corpo'],['forza','Forza'],['cardio','Cardio'],['mobilita','Mobilità']].map(t => '<button type="button" role="tab" aria-selected="' + (tab === t[0]) + '" data-a="ptab" data-v="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+  if (tab === 'corpo') {
     h += compCard();
     h += fisicoCard();
     const ibs = S.inbody.slice().sort((a, b) => a.data < b.data ? -1 : 1);
@@ -3078,16 +3067,10 @@ SCREENS.progressi = function(){
       h += '<div class="card"><div class="row"><h2>Esercizi</h2><button type="button" class="link" data-a="sheet" data-k="rinomina">Rinomina o unisci</button></div><div class="list">' + keys.map(k => '<div class="li"><button type="button" class="liwrap" data-a="forzaex" data-v="' + esc(k) + '"><span class="grow"><span class="title">' + esc(R.best[k].nome) + '</span><span class="small muted">migliore il ' + esc(fmtD(R.best[k].data)) + '</span></span><span class="mono" style="font-weight:600">' + fmtN(R.best[k].v) + ' kg</span></button></div>').join('') + '</div></div>';
       if (R.recs.length) h += '<div class="card"><h2>Record personali</h2><div class="list">' + R.recs.slice().reverse().slice(0, 8).map(r => '<div class="li"><span class="grow"><span class="title">' + esc(r.nome) + '</span><span class="small muted">' + esc(fmtD(r.data)) + '</span></span><span class="mono">' + fmtN(+r.kg) + ' kg × ' + r.rip + '</span></div>').join('') + '</div></div>';
     }
+  } else if (tab === 'cardio') {
+    h += vo2Card() + cardioSettCard() + nuotoCard();
   } else {
     h += mobilitaCard();
-    h += vo2Card();
-    const cks = S.checkin.slice().sort((a, b) => a.settimana < b.settimana ? 1 : -1).slice(0, 8);
-    h += '<div class="card"><div class="row"><h2>Settimane in sintesi</h2><button type="button" class="link" data-a="sheet" data-k="mattino">Check del mattino</button></div>';
-    if (!cks.length) h += '<div class="empty">Si compila da sola con i check del mattino: media di sonno, qualità ed energia della settimana, più lo stress.</div>';
-    else h += '<div class="tablewrap"><table class="t" style="min-width:0"><thead><tr><th>Settimana</th><th>Sonno</th><th>Qualità</th><th>Energia</th><th>Stress</th></tr></thead><tbody>' + cks.map(c => '<tr><td>' + esc(fmtD(parseDate(c.settimana))) + '</td><td class="mono">' + fmtN(c.sonnoOre) + ' h</td><td class="mono">' + c.sonnoQ + '</td><td class="mono">' + c.energia + '</td><td class="mono">' + c.stress + '</td></tr>').join('') + '</tbody></table></div>';
-    h += '</div>';
-    const weeks = []; for (let i = 5; i >= 0; i--) { const w = weekKey(new Date(weekStart(new Date()).getTime() - i * 7 * DAY + 3600000)); weeks.push({ x: fmtD(parseDate(w)), y: S.recupero.filter(r => weekKey(parseDate(r.data)) === w).reduce((a, r) => a + (+r.min || 0), 0) }); }
-    h += '<div class="card"><div class="row"><h2>Minuti di recupero a settimana</h2><button type="button" class="link" data-a="go" data-r="recupero">Registra</button></div>' + (weeks.some(w => w.y > 0) ? lineChart(weeks, 'min') : '<div class="empty">Sauna, acqua fredda, idromassaggio e mobilità compariranno qui.</div>') + '</div>';
   }
   return h + '</div>';
 };
@@ -3096,8 +3079,7 @@ SCREENS.recupero = function(){
   const wk = weekKey(new Date()); const week = S.recupero.filter(r => weekKey(parseDate(r.data)) === wk).sort((a, b) => a.data < b.data ? 1 : -1);
   const score = stats().st.recupero;
   const ck = S.checkin.find(c => c.settimana === wk);
-  const swims = S.attivita.filter(a => a.sotto === 'nuoto').sort((a, b) => a.data < b.data ? 1 : -1);
-  let h = '<div class="screen">' + topbar('', 'Recupero e longevità', { back: S.profilo.ruolo === 'cliente' ? 'home' : 'livelli' });
+  let h = '<div class="screen">' + topbar('', 'Recupero', { back: S.profilo.ruolo === 'cliente' ? 'home' : 'livelli' });
   h += '<div class="card ink" style="flex-direction:row;align-items:center;gap:16px"><svg role="img" aria-label="Punteggio recupero ' + (score == null ? 'non disponibile' : score + ' su 100') + '" width="72" height="72" viewBox="0 0 72 72" style="flex:0 0 auto"><circle cx="36" cy="36" r="30" fill="none" stroke="var(--ink-line)" stroke-width="7"/>'
     + (score != null ? '<circle cx="36" cy="36" r="30" fill="none" stroke="#7FD1B5" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (score / 100 * 188.5).toFixed(1) + ' 189" transform="rotate(-90 36 36)"/>' : '')
     + '<text x="36" y="42" text-anchor="middle" font-size="19" font-weight="700" fill="currentColor" style="font-variant-numeric:tabular-nums">' + (score == null ? '—' : score) + '</text></svg>'
@@ -3106,13 +3088,10 @@ SCREENS.recupero = function(){
   if (!mattinoOggi()) h += mattinoCard() || '<button type="button" class="btn sm" data-a="sheet" data-k="mattino">Fai il check del mattino di oggi</button>';
   h += sonnoCard();
   h += '<div class="stack" style="gap:8px"><h2>Registra una sessione</h2><div class="pills">'
-    + [['nuoto','Nuoto'],['sauna','Sauna'],['freddo','Acqua fredda'],['idro','Idromassaggio'],['mobilita','Mobilità']].map(o => '<button type="button" class="pill" data-a="sheet" data-k="' + (o[0] === 'nuoto' ? 'attivita' : 'recupero') + '" data-v="' + o[0] + '">' + o[1] + '</button>').join('') + '</div></div>';
-  if (swims.length) { const l = swims[0]; const pace = l.km ? (l.min * 60) / (l.km * 10) : null;
-    h += '<div class="card"><div class="row"><h2>Nuoto · ' + esc(fmtD(parseDate(l.data))) + '</h2><span class="chip">' + swims.length + ' in totale</span></div><div class="grid3"><div class="stack"><span class="tiny muted">Distanza</span><span class="big-num" style="font-size:17px">' + (l.km ? fmtN(l.km * 1000, 0) + ' m' : '—') + '</span></div><div class="stack"><span class="tiny muted">Tempo</span><span class="big-num" style="font-size:17px">' + fmtMin(l.min) + '</span></div><div class="stack"><span class="tiny muted">Passo /100 m</span><span class="big-num" style="font-size:17px">' + (pace ? Math.floor(pace / 60) + ':' + pad(Math.round(pace % 60)) : '—') + '</span></div></div></div>'; }
+    + [['sauna','Sauna'],['freddo','Acqua fredda'],['idro','Idromassaggio'],['mobilita','Mobilità']].map(o => '<button type="button" class="pill" data-a="sheet" data-k="recupero" data-v="' + o[0] + '">' + o[1] + '</button>').join('') + '</div></div>';
   h += '<div class="card"><h2>Questa settimana</h2>' + (week.length ? '<div class="list">' + week.map(r => '<div class="li"><button type="button" class="liwrap" data-a="sheet" data-k="recupero" data-id="' + r.id + '"><span class="grow"><span class="title">' + ({ sauna:'Sauna', freddo:'Acqua fredda', idro:'Idromassaggio', mobilita:'Mobilità' }[r.tipo]) + '</span><span class="small muted">' + esc(fmtD(parseDate(r.data))) + ' · ' + (r.giri ? r.giri + ' giri · ' : '') + fmtMin(r.min) + '</span></span></button><button type="button" class="btn sm" data-a="delrec" data-id="' + r.id + '" aria-label="Elimina">' + ic('x', 16) + '</button></div>').join('') + '</div>' : '<div class="empty">Ancora nessuna sessione questa settimana.</div>') + '</div>';
-  h += mobilitaCard();
-  h += vo2Card();
   h += '<div class="card soft"><span class="eyebrow">Consiglio di oggi</span><span style="line-height:1.5">' + esc(recoveryTip(ck)) + '</span><span class="tiny muted" style="line-height:1.4">Problemi di cuore o di pressione, o in gravidanza? Chiedi al medico prima di usare sauna e acqua fredda.</span></div>';
+  h += '<div class="grid2"><button type="button" class="btn sm" data-a="go" data-r="progressi" data-tab="mobilita">Test di mobilità</button><button type="button" class="btn sm" data-a="go" data-r="progressi" data-tab="cardio">Cardio e VO2max</button></div>';
   return h + '</div>';
 };
 function recoveryTip(ck){
@@ -3257,7 +3236,7 @@ SCREENS.livelli = function(){
   const top3 = Object.keys(T.X.pct).filter(k => T.X.pct[k] >= 1).sort((a, b) => T.X.pct[b] - T.X.pct[a]).slice(0, 3);
   const R = computeRecords(); const ms = missions(); const role = S.profilo.ruolo;
   const roleLab = role === 'cliente' ? 'Profilo atleta' : S.profilo.nome.split(' ')[0] + ' · ' + (role === 'pt' ? 'PT' : 'GT');
-  const links = role === 'cliente' ? [['progressi', 'Corpo e misure', 'corpo'], ['progressi', 'Forza', 'forza'], ['progressi', 'Cardio e mobilità', 'benessere'], ['recupero', 'Recupero', ''], ['previsioni', 'Previsioni', '']] : [['obiettivi','Obiettivi'],['progressi','Progressi'],['nutrizione','Nutrizione'],['recupero','Recupero']].filter(l => !(role === 'pt' && l[0] === 'nutrizione'));
+  const links = role === 'cliente' ? [['progressi', 'Corpo e misure', 'corpo'], ['progressi', 'Forza', 'forza'], ['progressi', 'Cardio', 'cardio'], ['progressi', 'Mobilità', 'mobilita'], ['recupero', 'Recupero', ''], ['previsioni', 'Previsioni', '']] : [['obiettivi','Obiettivi'],['progressi','Progressi'],['nutrizione','Nutrizione'],['recupero','Recupero']].filter(l => !(role === 'pt' && l[0] === 'nutrizione'));
   const linkRow = (role === 'cliente' ? '<span class="' + (game ? 'g-label' : 'eyebrow') + '" style="margin-top:4px">I tuoi dati in dettaglio</span>' : '') + '<div class="grid' + (links.length === 3 ? '3' : '2') + '">' + links.map(l => '<button type="button" class="btn sm" data-a="go" data-r="' + l[0] + '"' + (l[2] ? ' data-tab="' + l[2] + '"' : '') + '>' + l[1] + '</button>').join('') + '</div>';
   if (!game) {
     let h = '<div class="screen">' + topbar('Livello ' + T.lv.L, T.text);
@@ -3327,7 +3306,7 @@ SCREENS.profilo = function(){
   if (role !== 'manager') h += '<div class="card"><div class="row"><span>Modalità livelli</span><button type="button" class="switch" role="switch" aria-checked="' + !!S.impostazioni.livelli + '" data-a="togglegame" aria-label="Modalità livelli"></button></div></div>';
   h += '<div class="card"><h2>Salvataggio</h2><span class="small muted" style="line-height:1.5">' + (Store.cloud ? 'I dati sono salvati nel tuo account: li ritrovi aprendo l\'app da qualsiasi dispositivo.' : (Store.ro ? 'I dati sono salvati solo su questo dispositivo: con il link che stai usando l\'app non può salvare nel tuo account.' : 'I dati sono salvati solo su questo dispositivo e in questo browser.')) + '</span><button type="button" class="link small" style="align-self:flex-start" data-a="sheet" data-k="salvataggio">Copia, ripristino e dettagli</button><span class="small muted">AI: ' + (aiReady() ? 'attiva' + (aiImages() ? ', anche con le foto' : '') : 'non attiva') + '</span>' + (aiReady() ? '' : aiOffBox()) + '<div class="grid2"><button type="button" class="btn sm" data-a="exportme">Esporta i miei dati</button><button type="button" class="btn sm ghost" data-a="confirm" data-what="wipe">Cancella tutto</button></div></div>';
   h += '<button type="button" class="btn wide" data-a="confirm" data-what="logout">Esci e cambia ruolo</button>';
-  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 39</p>';
+  h += '<p class="tiny muted" style="margin:0;text-align:center">Delta Coach · versione di prova 40</p>';
   return h + '</div>';
 };
 
@@ -4455,7 +4434,6 @@ function quant(arr, q){ const a = arr.slice().sort((x, y) => x - y); const i = c
 function slopeKgWeek(pts){ if (pts.length < 3) return null; const t0 = parseDate(pts[0].data).getTime(); const xs = pts.map(p => (parseDate(p.data).getTime() - t0) / (7 * DAY)), ys = pts.map(p => p.peso); const mx = avgN(xs), my = avgN(ys); let n = 0, d = 0; xs.forEach((x, i) => { n += (x - mx) * (ys[i] - my); d += (x - mx) * (x - mx); }); return d > 0 ? n / d : null; }
 const PREV_R0 = { m: { principiante: 0.7, intermedio: 0.35, avanzato: 0.15 }, f: { principiante: 0.35, intermedio: 0.18, avanzato: 0.08 } };
 const PREV_FE = { surplus: { principiante: 1, intermedio: 1, avanzato: 1 }, mantenimento: { principiante: 0.85, intermedio: 0.6, avanzato: 0.35 }, deficit: { principiante: 0.6, intermedio: 0.35, avanzato: 0.15 }, deficit_forte: { principiante: 0.3, intermedio: 0.1, avanzato: 0 } };
-const EN_LAB = { surplus: 'leggero surplus', mantenimento: 'mantenimento', deficit: 'deficit moderato', deficit_forte: 'deficit forte' };
 function prevInput(){ if (UI.prevI && Date.now() - UI.prevI.t < 20000) return UI.prevI.v; const v = prevInputRun(); UI.prevI = { t: Date.now(), v }; return v; }
 function prevInputRun(){
   const sx = sexOf() === 'f' ? 'f' : 'm'; const age = ageOf(); const peso = latestPeso(); const CI = compInfo(); const ib = latestInbody(); const t = isoDate(new Date());
@@ -4483,7 +4461,7 @@ function prevInputRun(){
   if (FX.kcal != null) { I0 = FX.kcal; intakeFonte = 'inserito da te'; } else if (kcalAvg) { I0 = kcalAvg; intakeFonte = 'dal diario, media di ' + kdays + ' giornate complete'; }
   if (sl != null && tdee) {
     const slc = clamp(sl, -1.5, 1.2);
-    if (I0 != null) { tdee = Math.round(0.5 * tdee + 0.5 * (I0 - slc * 1100)); tdeeFonte = 'ricalibrato confrontando quanto mangi con l\'andamento del peso (' + ptsTxt + ')'; }
+    if (I0 != null) { tdee = Math.round(0.25 * tdee + 0.75 * (I0 - slc * 1100)); tdeeFonte = 'ricalibrato confrontando quanto mangi con l\'andamento del peso (' + ptsTxt + ')'; }
     else { I0 = tdee + slc * 1100; intakeFonte = 'ricavato dall\'andamento del peso (' + ptsTxt + ')'; }
   }
   if (I0 == null && tdee) { const ob = (S.dati || {}).obiettivo || 'mantenere'; I0 = tgK || Math.round(tdee + (ob === 'massa' ? 250 : ob === 'dimagrire' ? -400 : 0)); intakeFonte = tgK ? 'ipotesi: il tuo obiettivo calorico. Registra i pasti o pesati 2-3 volte a settimana per un dato vero' : 'ipotesi dal tuo obiettivo: registra i pasti o pesati per un dato vero'; }
@@ -4567,7 +4545,6 @@ function formaChart(M){
     + '<text x="' + X(cut) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="var(--muted)">oggi</text><text x="' + X(0) + '" y="' + (H - 6) + '" font-size="10" fill="var(--muted)">6 settimane fa</text><text x="' + X(n) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10" fill="var(--muted)">+2 settimane</text></svg>'
     + '<div class="row start tiny muted" style="gap:14px"><span><b style="color:var(--accent-tx)">━</b> forma (si costruisce in settimane)</span><span><b style="opacity:.6">━</b> fatica (passa in pochi giorni)</span></div>';
 }
-function kgTxt(v){ return (v >= 0 ? '+' : '−') + fmtN(Math.abs(v), 1) + ' kg'; }
 SCREENS.previsioni = function(){
   let h = '<div class="screen">' + topbar('Dai tuoi dati', 'Previsioni', { back: 'livelli' }); const I = prevInput();
   if (!I.ok) return h + '<div class="card"><span style="font-weight:700">Mi servono età e peso</span><span class="small muted" style="line-height:1.5">Le previsioni partono dai tuoi dati: completa il profilo e registra qualche allenamento.</span><button type="button" class="btn dark" data-a="sheet" data-k="dati">Completa i dati</button></div></div>';
@@ -4755,7 +4732,6 @@ const AV_CORPO = [['m', 'Maschile'], ['f', 'Femminile'], ['n', 'Neutra']];
 const AV_GAMBE = [['corti', 'Pantaloncini'], ['lunghi', 'Leggings']];
 // materiale del piedistallo per grado: bronzo, argento, oro, platino, ossidiana
 const AV_PIED = [['#B87A4B', '#8E5A32', 'bronzo'], ['#B9C0C7', '#8A939C', 'argento'], ['#E0B43C', '#B08A22', 'oro'], ['#8FD3CC', '#5FA7A0', 'platino'], ['#3A3550', '#221F33', 'ossidiana']];
-function avShade(hex, f){ const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const t = f < 0 ? 0 : 255, p = Math.abs(f); r = Math.round((t - r) * p + r); g = Math.round((t - g) * p + g); b = Math.round((t - b) * p + b); return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
 // cfg: aspetto scelto. st: { L, build 0-100, def 0-100, grado 0-4, classe, mood, equip:{...}, prop }
 /* ---------- il personaggio: ritratto in stile anime (SVG), animazioni leggere via CSS ---------- */
 const AV_OCCHI = [['castani', '#7A4526'], ['nocciola', '#A8742F'], ['verdi', '#3E8F5E'], ['azzurri', '#3B86C8'], ['grigi', '#7D8C99'], ['viola', '#7A5BC0'], ['ambra', '#C98A1E'], ['neri', '#3A3034']];
@@ -5583,7 +5559,7 @@ function sheetLezfatta(){
 function ptCardSolo(){
   return '<div class="card"><span class="small muted">Personal trainer</span><span style="font-weight:700">Usi l\'app da solo</span><span class="small muted" style="line-height:1.45">Se ti segue un PT puoi collegarlo con il suo codice: prenoti le sedute dall\'app e scegli tu cosa condividere. Se vuoi solo tenere il conto delle lezioni, basta il pacchetto qui sotto.</span><button type="button" class="btn sm" data-a="confirm" data-what="linkpt">Collega un PT</button></div>';
 }
-const STAT_GO = { forza: ['progressi', 'forza'], resistenza: ['progressi', 'benessere'], mobilita: ['progressi', 'benessere'], composizione: ['progressi', 'corpo'], recupero: ['recupero'], nutrizione: ['nutrizione'], mente: ['obiettivi', '', 'mente'], costanza: ['allenati'] };
+const STAT_GO = { forza: ['progressi', 'forza'], resistenza: ['progressi', 'cardio'], mobilita: ['progressi', 'mobilita'], composizione: ['progressi', 'corpo'], recupero: ['recupero'], nutrizione: ['nutrizione'], mente: ['obiettivi', '', 'mente'], costanza: ['allenati'] };
 function statGo(k){ const g = STAT_GO[k] || ['livelli']; return 'data-a="go" data-r="' + g[0] + '"' + (g[1] ? ' data-tab="' + g[1] + '"' : '') + (g[2] ? ' data-t="' + g[2] + '"' : '') + ' aria-label="Dettagli ' + k + '"'; }
 
 /* ---------- obiettivi ---------- */
@@ -6334,11 +6310,6 @@ function renderSheet(){
   switch (k) {
     case 'confirm': return '<h2>' + esc(d.title) + '</h2><p class="muted" style="margin:0;line-height:1.5">' + esc(d.text) + '</p><div class="grid2">' + close + '<button type="button" class="btn pri" data-a="doconfirm">' + esc(d.ok) + '</button></div>';
     case 'checkin': return sheetMattino();
-    case 'checkinsett': { const wk = weekKey(new Date()); const c = S.checkin.find(x => x.settimana === wk) || {};
-      const scale = (name, lab, val, lo, hi) => '<div class="field"><span class="flabel">' + lab + '</span><div class="seg">' + [1,2,3,4,5].map(v => '<button type="button" data-a="pick" data-name="' + name + '" data-v="' + v + '" aria-selected="' + (+val === v) + '">' + v + '</button>').join('') + '</div><input type="hidden" name="' + name + '" value="' + (val || '') + '"><div class="row tiny muted"><span>' + lo + '</span><span>' + hi + '</span></div></div>';
-      return '<h2>Check-in della settimana</h2><form data-form="checkin" class="stack" style="gap:14px" novalidate><div class="grid2"><div class="field"><label for="ck-h">Ore di sonno a notte</label><input id="ck-h" name="sonnoOre" class="input mono" inputmode="decimal" value="' + esc(c.sonnoOre || (recuperoDaMattino() ? fmtN(recuperoDaMattino().ore, 1) : '')) + '"></div><div class="field"><label for="ck-p">Peso (facoltativo)</label><input id="ck-p" name="peso" class="input mono" inputmode="decimal" value="' + esc(c.peso || '') + '"></div></div>'
-        + scale('sonnoQ', 'Qualità del sonno', c.sonnoQ, 'pessima', 'ottima') + scale('energia', 'Energia', c.energia, 'a terra', 'al massimo') + scale('stress', 'Stress', c.stress, 'nessuno', 'altissimo')
-        + '<div class="field"><label for="ck-n">Note per il PT (facoltativo)</label><input id="ck-n" name="nota" class="input" value="' + esc(c.nota || '') + '" maxlength="140"></div><div class="grid2">' + close + '<button class="btn pri" type="submit">Salva</button></div></form>'; }
     case 'inbody': return sheetInbody(d);
     case 'attivita': { const ea = d.id ? S.attivita.find(x => x.id === d.id) : null; const exx = d.ex ? exList().find(e => e.id === d.ex) : (ea && ea.extra ? exList().find(e => e.id === ea.extra) : null); const pre = ea ? ea.sotto : exx ? exx.sotto : d.v || 'corsa';
       return '<h2>' + (ea ? 'Modifica attività' : exx ? esc(exNome(exx)) + ' · fatto' : 'Registra un\'attività') + '</h2>' + (exx && !ea ? '<span class="small muted" style="line-height:1.45">Extra facoltativo: conta per livelli e serie, non sposta la scheda. Correggi minuti e distanza se oggi sono diversi.</span>' : '') + '<form data-form="attivita" data-id="' + (ea ? ea.id : '') + '" class="stack" style="gap:12px" novalidate>' + (exx ? '<input type="hidden" name="extra" value="' + exx.id + '">' : '') + '<div class="field"><label for="at-t">Tipo</label><select id="at-t" name="sotto" class="input">' + ATT_OPTS.map(g => '<optgroup label="' + (g[0] === 'corso' ? 'Corsi di gruppo' : g[0] === 'cardio' ? 'Cardio' : 'Altro') + '">' + g[1].map(o => '<option value="' + o[0] + '"' + (o[0] === pre ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</optgroup>').join('') + '</select></div>'
@@ -6869,11 +6840,9 @@ const A = {
   async regen(ds){ const c = clone(SH.cfg); const pre = { pt: 'PT', gt: 'GT', manager: 'MGR' }[ds.k]; const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)]; c[ds.k] = pre + '-' + s;
     try { await Store.set('config/codici', c); SH.cfg = c; toast('Nuovo codice: ' + c[ds.k]); } catch(e) { toast('Non riuscito, riprova'); } render(); },
   photodel(ds){ const l = FILES[ds.k] || []; l.splice(+ds.i, 1); keepSheet(); render(); },
-  pastomode(ds){ const d = sheetD(); keepSheet(); d.mode = ds.v; d.err = ''; render(); },
   pastorm(ds){ const d = sheetD(); if (!d.result) return; d.result.splice(+ds.i, 1); if (!d.result.length) d.result = null; render(); },
   microsel(ds){ UI.microSel = UI.microSel === ds.k ? null : ds.k; render(); },
   mper(ds){ UI.mper = ds.v; render(); },
-  togglecontainteg(){ S.nutri.contaInteg = S.nutri.contaInteg === false; save(); render(); },
   usestima(){ const E = energia(); if (!E) { UI.sheet = { k: 'dati', d: {} }; render(); return; } S.nutri.override = null; S.nutri.target = { kcal: E.kcal, proteine: E.proteine, carboidrati: E.carboidrati, grassi: E.grassi }; S.nutri.fonte = 'calcolati dai tuoi dati'; save(); UI.sheet = null; toast('Obiettivi: ' + fmtK(E.kcal) + ' kcal'); render(); },
   copyinv(){ copyText($('#invtxt').value, '#invtxt'); },
   async shareinv(){ try { await navigator.share({ text: $('#invtxt').value }); } catch(e) { if (e && e.name !== 'AbortError') toast('Condivisione non disponibile qui: usa Copia'); } },
@@ -7125,12 +7094,6 @@ const FORMS = {
     }
     try { await Store.set('staff/' + Store.uid, doc); } catch(e) { UI.err = 'Registrazione non riuscita, riprova.'; render(); return; }
     Object.assign(S.profilo, { ruolo: role, onboarded: true }); save(); UI.err = ''; go(ROOT_ROUTES[role]);
-  },
-  checkin(fd){
-    const wk = weekKey(new Date()); const sonnoOre = num(fd.get('sonnoOre')); const q = +fd.get('sonnoQ'), en = +fd.get('energia'), stx = +fd.get('stress');
-    if (!(sonnoOre > 0 && sonnoOre < 16) || !q || !en || !stx) { toast('Compila ore di sonno, qualità, energia e stress'); return; }
-    const c = { id: rid(), settimana: wk, data: isoDate(new Date()), sonnoOre, sonnoQ: q, energia: en, stress: stx, peso: num(fd.get('peso')), nota: String(fd.get('nota') || '') };
-    S.checkin = S.checkin.filter(x => x.settimana !== wk).concat([c]); save(); UI.sheet = null; toast('Check-in salvato'); render(); pushSummary();
   },
   cibo(fd, f){
     const ds = UI.nday; const it = foodFor(ds).find(i => i.id === f.dataset.id); if (!it) return;
